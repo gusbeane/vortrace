@@ -8,6 +8,7 @@ PYBIND11_MODULE(vortrace, m) {
     py::class_<PointCloud>(m, "PointCloud")
         .def(py::init<>())
         .def("loadArepoSnapshot", &PointCloud::loadArepoSnapshot)
+        .def("loadPoints", &PointCloud::loadPoints)
         .def("buildTree", &PointCloud::buildTree);
 
     py::class_<Projection>(m, "Projection")

@@ -4,6 +4,11 @@
 #include "mytypes.hpp"
 #include <nanoflann.hpp>
 
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
+
 //Forward declare for subsequent typedef
 class PointCloud;
 typedef nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<MyFloat, PointCloud>,PointCloud,3> my_kd_tree_t;
@@ -24,6 +29,7 @@ class PointCloud
     //Load gas from snapshot, applying subbox {xmin,xmax,ymin,ymax,zmin,zmax}
     //and build tree
     void loadArepoSnapshot(const std::string snapname, const std::array<MyFloat,6> subbox);
+    void loadPoints(py::array_t<double> pos, py::array_t<double> dens, const std::array<MyFloat,6> newsubbox);
     void buildTree();
 
     size_t queryTree(const MyFloat query_pt[3]) const;

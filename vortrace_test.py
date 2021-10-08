@@ -1,9 +1,18 @@
 import vortrace
+import arepo
+import numpy as np
+
+def read_snap(snapname):
+    sn = arepo.Snapshot(snapname)
+    pos = sn.part0.pos.value
+    dens = sn.part0.rho.value
+    return pos, dens
 
 cloud = vortrace.PointCloud()
 snapname = "test_data/snap_200.hdf5"
 boundbox = [87.0,93.0,87.0,93.0,87.0,93.0]
-cloud.loadArepoSnapshot(snapname, boundbox)
+pos, dens = read_snap(snapname)
+cloud.loadPoints(pos, dens, boundbox)
 cloud.buildTree()
 
 npix = [256,256]
