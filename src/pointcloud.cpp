@@ -1,94 +1,13 @@
 
 #include "pointcloud.hpp"
-#include <boost/multi_array.hpp>
-#undef H5_USE_BOOST
-#define H5_USE_BOOST
-#include <highfive/H5File.hpp>
 #ifdef TIMING_INFO
 #include <chrono>
 #endif
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <iostream>
 
 namespace py = pybind11;
-
-//Load gas from snapshot, applying subbox {xmin,xmax,ymin,ymax,zmin,zmax}
-//Build tree
-void PointCloud::loadArepoSnapshot(const std::string snapname, const std::array<MyFloat,6> newsubbox)
-{
-  std::cout << "Loading " << snapname << "...\n";
-
-  HighFive::File file(snapname, HighFive::File::ReadOnly);
-
-  //Header
-  HighFive::Group header = file.getGroup("Header");
-  //Get boxsize
-  MyFloat boxsize;
-  header.getAttribute("BoxSize").read(boxsize);
-  //Get current number of particles
-  std::vector<size_t> npart_all_types;
-  header.getAttribute("NumPart_Total").read(npart_all_types);
-  size_t npart_temp = npart_all_types[0];
-
-  //PartType0
-  HighFive::Group part0 = file.getGroup("PartType0");
-  //Get coordinates
-  boost::multi_array<MyFloat, 2> pos_temp(boost::extents[npart_temp][3]);
-  part0.getDataSet("Coordinates").read(pos_temp);
-  //Get density
-  std::vector<MyFloat> dens_temp;
-  part0.getDataSet("Density").read(dens_temp);
-
-  std::cout << "Applying bounding box...\n";
-
-  subbox = newsubbox;
-  //Find particles that are inside the (padded) frame
-  MyFloat xmin = BOX_PAD_MIN * subbox[0];
-  MyFloat xmax = BOX_PAD_MAX * subbox[1];
-  MyFloat ymin = BOX_PAD_MIN * subbox[2];
-  MyFloat ymax = BOX_PAD_MAX * subbox[3];
-  MyFloat zmin = BOX_PAD_MIN * subbox[4];
-  MyFloat zmax = BOX_PAD_MAX * subbox[5];
-
-  std::vector<size_t> limit_idx;
-  limit_idx.reserve(npart_temp);
-
-  for(size_t i = 0; i < npart_temp; i++)
-  {
-    if((pos_temp[i][0] >= xmin) && (pos_temp[i][0] <= xmax) 
-      && (pos_temp[i][1] >= ymin) && (pos_temp[i][1] <= ymax)
-      && (pos_temp[i][2] >= zmin) && (pos_temp[i][2] <= zmax)) 
-    {
-      limit_idx.push_back(i);
-    }
-  }
-
-  npart = limit_idx.size();
-
-  //Load selected particles
-  pts.resize(npart);
-  dens.resize(npart);
-  size_t idx;
-  for(size_t i = 0; i < npart; i++) 
-  { 
-    idx = limit_idx[i];
-    pts[i][0] = pos_temp[idx][0];
-    pts[i][1] = pos_temp[idx][1];
-    pts[i][2] = pos_temp[idx][2];
-    dens[i] = dens_temp[idx]; 
-  }
-
-  std::cout << "npart: " << npart << "\n";
-
-  std::cout << "Snapshot loaded." << std::endl;
-  //Flag that tree is no longer up to date.
-  tree_built = false;
-}
-
-// set npart
-// set subbox
-// set pts
-// set dens
 
 void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens_in, const std::array<MyFloat,6> newsubbox)
 {

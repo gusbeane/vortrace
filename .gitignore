@@ -1,8 +1,6 @@
 test_data/
 build/
 
-include/highfive
-
 vortrace.cpython-37m-darwin.so
 test_slice.dat
 test_proj.dat

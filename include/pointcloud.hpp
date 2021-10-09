@@ -28,7 +28,6 @@ class PointCloud
 
     //Load gas from snapshot, applying subbox {xmin,xmax,ymin,ymax,zmin,zmax}
     //and build tree
-    void loadArepoSnapshot(const std::string snapname, const std::array<MyFloat,6> subbox);
     void loadPoints(py::array_t<double> pos, py::array_t<double> dens, const std::array<MyFloat,6> newsubbox);
     void buildTree();
 

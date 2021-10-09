@@ -1,7 +1,6 @@
 #ifndef MYTYPES_HPP
 #define MYTYPES_HPP
 
-#include <boost/multi_array.hpp>
 #include <array>
 #include <vector>
 
