@@ -93,4 +93,28 @@ void Projection::saveProjection(const std::string savename) const
 
 }
 
+py::array_t<double> Projection::returnProjection(void) const
+{
+  // std::cout << "Saving projection to " << savename << "...   ";
+  //First check if slice has been made
+  if(dens_proj.empty())
+  {
+    std::cout << "Projection has not yet been made. Aborting." << std::endl;
+    exit(1);
+  }
+
+  // std::ofstream myfile(savename, std::ios::trunc);
+  // if (myfile.is_open())
+  // {
+  auto result = py::array_t<double>(dens_proj.size());
+  py::buffer_info buf = result.request();
+  double *result_ptr = static_cast<double *>(buf.ptr);
+
+  for(size_t i = 0; i < dens_proj.size(); i++){
+    result_ptr[i] = dens_proj[i];
+  }
+
+  return result;
+}
+
 

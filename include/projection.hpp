@@ -18,7 +18,7 @@ class Projection
 
     void makeProjection(const PointCloud &cloud);
     void saveProjection(const std::string savename) const;
-
+    py::array_t<double> returnProjection(void) const;
 };
 
 #endif
