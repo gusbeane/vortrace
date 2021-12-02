@@ -4,7 +4,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(vortrace, m) {
+PYBIND11_MODULE(Cvortrace, m) {
     py::class_<PointCloud>(m, "PointCloud")
         .def(py::init<>())
         .def("loadPoints", &PointCloud::loadPoints)

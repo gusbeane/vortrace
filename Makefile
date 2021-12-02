@@ -9,7 +9,7 @@ CXXFLAGS += -DTIMING_INFO
 
 SRCDIR := src
 BUILDDIR := build
-LIBNAME := vortrace
+LIBNAME := Cvortrace
 TARGET = $(LIBNAME)$(shell python3-config --extension-suffix)
  
 SRCEXT := cpp
