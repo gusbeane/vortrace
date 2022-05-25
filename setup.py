@@ -3,13 +3,12 @@ from setuptools import setup, Extension
 from pybind11.setup_helpers import Pybind11Extension
 
 ext_modules = [
-    #Pybind11Extension(
-    Extension(
+    Pybind11Extension(
         "Cvortrace",
         sorted(glob("src/*.cpp")),
         include_dirs=['include'],
         language='c++',
-        extra_compile_args=['-std=c++11', '-fopenmp']  # Sort source files for reproducibility
+        extra_compile_args=['-std=c++11']  # Sort source files for reproducibility
     ),
 ]
 
