@@ -75,7 +75,7 @@ void Ray::integrate(const PointCloud &cloud)
   next = 1;
   ntree_id = pts[1].tree_id;
 
-  dens_col = 0;
+  dens_col = 0.0;
 
   //While we haven't reached the last point
   while(true)
@@ -100,7 +100,7 @@ void Ray::integrate(const PointCloud &cloud)
       ds = pts[next].s - s;
       dens_col += ds * cloud.get_dens(ntree_id);
       //Move on
-      current = next;
+      current = pts[current].next;
       ctree_id = pts[current].tree_id;
       next = pts[current].next;
       //Check to see if we reached the end
@@ -113,6 +113,7 @@ void Ray::integrate(const PointCloud &cloud)
       //Add new point
       pts.emplace_back(stree_id, next, s);
       next = pts.size() - 1;
+      pts[current].next = next;
       ntree_id = stree_id;
     }
   } //while()
