@@ -10,7 +10,7 @@
 #ifdef DOUBLE_PRECISION
 typedef double MyFloat;
 #else
-typedef float MyFloat;
+typedef double MyFloat;
 #endif
 
 typedef std::array<MyFloat,3> cartarr_t;
