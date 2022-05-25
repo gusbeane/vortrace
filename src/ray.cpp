@@ -4,6 +4,10 @@
 #include <iostream>
 #include <cmath>
 
+
+// #include <iostream>
+#include <fstream>
+
 Ray::Ray(const cartarr_t &start, const cartarr_t &end)
 {
   pos_start = start;
@@ -55,6 +59,7 @@ void Ray::integrate(const PointCloud &cloud)
   size_t ctree_id, ntree_id, stree_id;
   MyFloat s, ds;
   cartarr_t pos;
+  int mode;
 
   //Find nearest neighbour for start and end ray points
 
@@ -88,7 +93,21 @@ void Ray::integrate(const PointCloud &cloud)
     pos[1] = pos_start[1] + s * dir[1];
     pos[2] = pos_start[2] + s * dir[2];
     //Neighbour search for this position
-    stree_id = cloud.queryTree(pos);
+    stree_id = cloud.checkMode(pos, &mode);
+
+    if(mode==2)
+    {
+      printf("Unlucky! Your projection intersects with an edge shared by three Voronoi cells.\n");
+      printf("This is not yet supported.\n");
+      exit(-1);
+    }
+
+    if(mode==3)
+    {
+      printf("Unlucky! Your projection intersects with a vertex shared by four Voronoi cells.\n");
+      printf("This is not yet supported.\n");
+      exit(-1);
+    }
 
     //If split point was on boundary, integrate
     //then move on to next interval

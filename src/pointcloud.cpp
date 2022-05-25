@@ -7,6 +7,8 @@
 #include <pybind11/numpy.h>
 #include <iostream>
 
+#define TOLERANCE 1E-12
+
 namespace py = pybind11;
 
 void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens_in, const std::array<MyFloat,6> newsubbox)
@@ -120,4 +122,35 @@ size_t PointCloud::queryTree(const cartarr_t &query_pt) const
   MyFloat r2; //
   tree->knnSearch(&query_pt_native[0], 1, &result, &r2);
   return result;
+}
+
+size_t PointCloud::checkMode(const MyFloat query_pt[3], int *mode) const
+{
+  size_t result[4];
+  MyFloat r2[4]; //
+  
+  tree->knnSearch(&query_pt[0], 4, &result[0], &r2[0]);
+  
+  if(r2[1]-r2[0]>TOLERANCE)
+    *mode = 0; // normal mode, we are in the middle of a cell
+  else
+  {
+    *mode = 1;
+    // we are on a face, edge, or vertex
+    if(r2[2] - r2[0] < TOLERANCE) // we are on an edge or vertex
+    {
+      *mode = 2;
+      if(r2[3] - r2[0] < TOLERANCE) // we are on a vertex
+        *mode = 3;
+    }
+  }
+
+  return result[0];
+}
+
+size_t PointCloud::checkMode(const cartarr_t &query_pt, int *mode) const
+{
+  //Need native array to pass to knnSearch
+  MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
+  return checkMode(query_pt_native, mode);
 }
