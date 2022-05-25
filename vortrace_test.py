@@ -12,10 +12,11 @@ def read_snap(snapname):
 snapname = "test_data/snap_200.hdf5"
 pos, dens, BoxSize = read_snap(snapname)
 
-pc = vt.projection_cloud(pos, dens)
+pc = vt.projection_cloud(pos, dens, boundbox=[0., BoxSize, 0., BoxSize, 0., BoxSize])
 xrng = yrng = [BoxSize/2. - 1.5, BoxSize/2. + 1.5]
+zrng = [0., BoxSize]
 npix = [256,256]
-dat = pc.projection(xrng, yrng, npix)
+dat = pc.projection(xrng, yrng, npix, zrng=zrng)
 
 # boundbox = [0., BoxSize, 0., BoxSize, 0., BoxSize]
 
