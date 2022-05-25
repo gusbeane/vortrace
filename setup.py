@@ -8,7 +8,7 @@ ext_modules = [
         sorted(glob("src/*.cpp")),
         include_dirs=['include'],
         language='c++',
-        extra_compile_args=['-std=c++11']  # Sort source files for reproducibility
+        extra_compile_args=['-std=c++11', '-DTIMING_INFO']  # Sort source files for reproducibility
     ),
 ]
 
