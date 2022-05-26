@@ -9,11 +9,12 @@ UnitL = 1e3 #pc
 UnitM = 1e10 #Msun
 UnitSigma = UnitM / (UnitL**2)
 
-fname = "test_proj.dat"
+fname = "test_proj.npy"
 #fname = "test_slice.dat"
 npix = 256
-data = np.loadtxt(fname)
-data = np.reshape(data,(npix,npix))
+# data = np.loadtxt(fname)
+# data = np.reshape(data,(npix,npix))
+data = np.load(fname)
 data = data.T
 data = data[::-1,:]
 #For proj
@@ -24,7 +25,7 @@ data *= UnitSigma
 fig = plt.figure(figsize=(6,4))
 
 ax1 = fig.add_subplot(111)
-L = 5.0
+L = 10.0
 im1 = plt.imshow(np.log10(data), extent=[-L/2., L/2., -L/2., L/2.], origin = 'upper', cmap=cc.m_CET_L16, interpolation='bicubic')
 #Proj limits
 plt.clim(-0.6, 1.5)

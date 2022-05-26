@@ -17,8 +17,9 @@ L = 10.0
 pc = vt.projection_cloud(pos, dens, boundbox=[0., BoxSize, 0., BoxSize, 0., BoxSize])
 xrng = yrng = [BoxSize/2. - L/2.0, BoxSize/2. + L/2.0]
 zrng = [0., BoxSize]
-npix = [256,256]
+npix = [512,512]
 dat = pc.projection(xrng, yrng, npix, zrng=zrng)
+np.save('test_proj.npy', dat)
 
 # boundbox = [0., BoxSize, 0., BoxSize, 0., BoxSize]
 
