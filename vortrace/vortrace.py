@@ -32,15 +32,11 @@ class projection_cloud(object):
         else:
             zrng = np.array([self.boundbox[4], self.boundbox[5]])
         
-        print(0)
 
         extent = [xrng[0], xrng[1], yrng[0], yrng[1], zrng[0], zrng[1]]
         proj = Cvortrace.Projection(npix, extent)
-        print(1)
         proj.makeProjection(self.cloud)
-        print(2)
         dat = proj.returnProjection()
-        print(3)
 
         dat = np.reshape(dat, npix)
         return dat
