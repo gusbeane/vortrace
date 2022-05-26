@@ -25,7 +25,7 @@ data *= UnitSigma
 fig = plt.figure(figsize=(6,4))
 
 ax1 = fig.add_subplot(111)
-L = 10.0
+L = 5.0
 im1 = plt.imshow(np.log10(data), extent=[-L/2., L/2., -L/2., L/2.], origin = 'upper', cmap=cc.m_CET_L16, interpolation='bicubic')
 #Proj limits
 plt.clim(-0.6, 1.5)
