@@ -7,6 +7,47 @@
 #ifdef TIMING_INFO
 #include <chrono>
 #endif
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
+
+Projection::Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_end)
+{
+  // Load input python arrays into pointers
+  py::buffer_info buf_pos_start = pos_start.request();
+  py::buffer_info buf_pos_end = pos_end.request();
+
+  MyFloat *pos_start_ptr = (MyFloat *) buf_pos_start.ptr,
+          *pos_end_ptr = (MyFloat *) buf_pos_end.ptr;
+  
+  // Check to ensure they have the correct dimensions
+  if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)
+    throw std::runtime_error("PROJECTION: pos_start and pos_end array must both be two-dimensional\n");
+  
+  // Check to ensure they have the same number of particles.
+  if (buf_pos_start.size != buf_pos_end.size)
+  {
+    std::cout << "buf_pos_start.size=" << buf_pos_start.size << "buf_pos_end.size=" << buf_pos_end.size <<"\n";
+    throw std::runtime_error("PROJECTION: pos_start and pos_end must have same sizes");
+  }
+
+  // Allocate and load in arrrays.
+  ngrid = buf_pos_start.size/3;
+
+  pts_start.reserve(ngrid);
+  pts_end.reserve(ngrid);
+
+  for(size_t i=0; i<ngrid; i++)
+  {
+    for(int j=0; j<3; j++)
+    {
+      pts_start[i][j] = pos_start_ptr[i*3 + j];
+      pts_end[i][j]   = pos_end_ptr[i*3 + j];
+    }
+  }
+
+}
 
 void Projection::makeProjection(const PointCloud &cloud)
 {
@@ -18,46 +59,21 @@ void Projection::makeProjection(const PointCloud &cloud)
     return;
   }
 
-  //First check extent is in cloud bounding box
-  std::array<MyFloat,6> subbox = cloud.get_subbox();
-  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
-      (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
-      (extent[4] < subbox[4]) || (extent[5] > subbox[5]))
-  {
-    std::cout << "Projection extent out of bounds of current point cloud bounding box.\n";
-    std::cout << "Aborting projection production." << std::endl;
-    return;
-  }
-
-  //Pull out some elements in case of omp slowdown issues
-  //Likely unnecessary, compiler should take care of it
-  size_t npix_x = npix[0];
-  size_t npix_y = npix[1];
-  size_t start_x = extent[0];
-  size_t start_y = extent[2];
-
-
-  MyFloat deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  MyFloat deltay = (extent[3] - extent[2]) / (npix_y - 1);
-
   //resize and zero result vector(s)
-  dens_proj.resize(npix_x * npix_y);
-  memset(&dens_proj[0], 0, dens_proj.size() * sizeof dens_proj[0]);
+  dens_proj.resize(ngrid);
+  memset(&dens_proj[0], 0.0, dens_proj.size() * sizeof dens_proj[0]);
   
   std::cout << "Making projection...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
   #pragma omp parallel for schedule(dynamic,256) collapse(2)
-  for(size_t i = 0; i < npix_x; i++)
-    for(size_t j = 0; j < npix_y; j++)
-      {
-        cartarr_t pos_start = {start_x + deltax * i, start_y + deltay * j,extent[4]};
-        cartarr_t pos_end = {start_x + deltax * i, start_y + deltay * j,extent[5]};
-        Ray projray(pos_start,pos_end);
+  for(size_t i = 0; i < ngrid; i++)
+  {
+        Ray projray(pts_start[i], pts_end[i]);
         projray.integrate(cloud);
-        dens_proj[i * npix_y + j] = projray.get_dens_col();
-      }
+        dens_proj[i] = projray.get_dens_col();
+  }
 
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();

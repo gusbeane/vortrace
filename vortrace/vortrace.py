@@ -17,6 +17,22 @@ class projection_cloud(object):
         self.cloud.loadPoints(pos, dens, boundbox)
         self.cloud.buildTree()
     
+    def _make_grid(self, npix, xrng, yrng, zrng):
+        pos_start = np.zeros((npix[0]*npix[1], 3))
+        pos_end = np.zeros((npix[0]*npix[1], 3))
+
+        delta_x = (xrng[1]-xrng[0])/(npix[0]-1)
+        delta_y = (yrng[1]-yrng[0])/(npix[1]-1)
+        
+        for i in range(npix[0]):
+            for j in range(npix[1]):
+                pos_start[i*npix[0]+j][0] = pos_end[i*npix[0]+j][0] = xrng[0] + delta_x * i
+                pos_start[i*npix[0]+j][1] = pos_end[i*npix[0]+j][1] = yrng[0] + delta_y * j
+                pos_start[i*npix[0]+j][2] = zrng[0]
+                pos_end[i*npix[0]+j][2] = zrng[1]
+        
+        return pos_start, pos_end
+    
     def projection(self, xrng, yrng, npix, zrng=None):
         xrng = np.array(xrng)
         yrng = np.array(yrng)
@@ -34,9 +50,13 @@ class projection_cloud(object):
         
 
         extent = [xrng[0], xrng[1], yrng[0], yrng[1], zrng[0], zrng[1]]
-        proj = Cvortrace.Projection(npix, extent)
+
+        pos_start, pos_end = self._make_grid(npix, xrng, yrng, zrng)
+        proj = Cvortrace.Projection(pos_start, pos_end)
         proj.makeProjection(self.cloud)
         dat = proj.returnProjection()
+
+        print(dat)
 
         dat = np.reshape(dat, npix)
         return dat
