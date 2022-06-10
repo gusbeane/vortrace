@@ -9,6 +9,8 @@ vortrace.egg-info/
 __pycache__/
 dist/
 
+vorenv/
+
 .vscode/
 *.so
 *.npy
