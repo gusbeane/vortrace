@@ -3,18 +3,13 @@
 
 name: Unit testing 
 
-on:
-  push:
-    branches: [ $default-branch ]
-  pull_request:
-    branches: [ $default-branch ]
+on: [push]
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
 
@@ -28,7 +23,7 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python -m pip install pylint pytest
-        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+#        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
    - name: Lint with Google style guide
      run: |
 #        # stop the build if there are Python syntax errors or undefined names
