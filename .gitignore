@@ -12,5 +12,7 @@ dist/
 vorenv/
 
 .vscode/
+.eggs/
+
 *.so
 *.npy
