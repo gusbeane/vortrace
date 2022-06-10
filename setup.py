@@ -1,6 +1,9 @@
 from glob import glob
-from setuptools import setup, Extension
-from pybind11.setup_helpers import Pybind11Extension
+from setuptools import setup
+try:
+    from pybind11.setup_helpers import Pybind11Extension
+except:
+    from setuptools import Extension as Pybind11Extension
 
 ext_modules = [
     Pybind11Extension(
@@ -18,4 +21,6 @@ setup(name='vortrace',
       author='Angus Beane and Matthew Smith',
       author_email='angus.beane@cfa.harvard.edu',
       packages=['vortrace'],
+      install_requires=['numpy', 'numba', 'pybind11'],
+      setup_requires=['pybind11'],
       ext_modules=ext_modules)
