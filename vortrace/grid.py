@@ -1,3 +1,15 @@
+"""Basic grid module.
+
+Collection of basic grid generation and manipulation routines.
+
+Example:
+    Example placeholders.
+
+Todo:
+    * Add examples.
+
+"""
+
 import numpy as np
 from numba import njit
 
@@ -26,19 +38,20 @@ def _generate_base_grid(extent, nres):
 def generate_base_grid(extent, nres):
     """Generates a 2D primitive grid.
 
-    Generates a 2D primitive grid spanning a given extent with a certain number of
-    resolution elements. The grid is 2D but the output is given as a 3D array with
-    the z-values of all grid points set to zero.
+    Generates a 2D primitive grid spanning a given extent with a certain number
+    of resolution elements. The grid is 2D but the output is given as a 3D
+    array with the z-values of all grid points set to zero.
 
     Args:
-        extent (array of float):  A (2,2) or (2,) array specifying the extent of the base grid.
-            If a (2,) array is given, assumes the same extent in both directions.
-        nres (int or array of int): Number of resolution elements. Either an int or a (2,) array
-            of ints, specifying in each direction.
-    
+        extent (array of float):  A (2,2) or (2,) array specifying the extent
+            of the base grid. If a (2,) array is given, assumes the same extent
+            in both directions.
+        nres (int or array of int): Number of resolution elements. Either an
+            int or a (2,) array of ints, specifying in each direction.
+
     Returns:
-        grid (array of float): A (N,3) array of grid points, where N is the total number of resolution
-            elements in the grid.
+        grid (array of float): A (N,3) array of grid points, where N is the
+            total number of resolution elements in the grid.
     """
 
     # Preprocess arguemnts.
@@ -47,7 +60,7 @@ def generate_base_grid(extent, nres):
     if extent.ravel().size == 2:
         extent = np.array([extent, extent])
     elif extent.ravel().size == 4:
-        extent = extent
+        pass
     else:
         raise ValueError("extent must be either (2,2) or (2,) array")
 
@@ -60,6 +73,6 @@ def generate_base_grid(extent, nres):
     return grid
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     grid0 = generate_base_grid([0, 1], 64)
     grid1 = generate_base_grid([[0, 1], [0, 1]], (64, 64))

@@ -1,8 +1,32 @@
+"""Main vortrace functions.
+
+Main entry point into vortrace functions.
+
+Example:
+    Example placeholders.
+
+Todo:
+    * Add examples.
+
+"""
+
 import Cvortrace
 import numpy as np
 
 
-class projection_cloud(object):
+class ProjectionCloud(object):
+    """Object for making projections through Voronoi mesh.
+
+    Organizes simple wrappers around the underlying Cvortrace package, which
+    does all the heavy lifting.
+
+    Example:
+        Example placeholders.
+
+    Todo:
+        * Add examples.
+
+"""
 
     def __init__(self, pos, dens, boundbox=None):
         pos = np.array(pos)
@@ -16,9 +40,9 @@ class projection_cloud(object):
 
         self.boundbox = boundbox
 
-        self.cloud = Cvortrace.PointCloud()
-        self.cloud.loadPoints(pos, dens, boundbox)
-        self.cloud.buildTree()
+        self._cloud = Cvortrace.PointCloud()
+        self._cloud.loadPoints(pos, dens, boundbox)
+        self._cloud.buildTree()
 
     def _make_grid(self, npix, xrng, yrng, zrng):
         pos_start = np.zeros((npix[0] * npix[1], 3))
@@ -55,11 +79,9 @@ class projection_cloud(object):
         else:
             zrng = np.array([self.boundbox[4], self.boundbox[5]])
 
-        extent = [xrng[0], xrng[1], yrng[0], yrng[1], zrng[0], zrng[1]]
-
         pos_start, pos_end = self._make_grid(npix, xrng, yrng, zrng)
         proj = Cvortrace.Projection(pos_start, pos_end)
-        proj.makeProjection(self.cloud)
+        proj.makeProjection(self._cloud)
         dat = proj.returnProjection()
 
         print(dat)
