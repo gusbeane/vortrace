@@ -17,12 +17,12 @@ ext_modules = [
 
 setup(name='vortrace',
       version='0.1',
-      description='Fast projections through voronoi meshes.',
+      description='Fast projections through Voronoi meshes.',
       author='Angus Beane and Matthew Smith',
       author_email='angus.beane@cfa.harvard.edu',
       packages=['vortrace'],
       install_requires=['numpy', 'numba', 'pybind11'],
       setup_requires=['pybind11'],
       extra_requires={'dev': ['h5py', 'pylint', 'pytest'],
-                      'test': ['h5py', 'pylint', 'pytest']}
+                      'test': ['h5py', 'pylint', 'pytest']},
       ext_modules=ext_modules)
