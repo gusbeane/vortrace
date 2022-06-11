@@ -71,8 +71,3 @@ def generate_base_grid(extent, nres):
     grid = _generate_base_grid(extent, nres)
 
     return grid
-
-
-if __name__ == "__main__":
-    grid0 = generate_base_grid([0, 1], 64)
-    grid1 = generate_base_grid([[0, 1], [0, 1]], (64, 64))
