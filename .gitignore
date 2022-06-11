@@ -1,9 +1,5 @@
 build/
-
 vortrace.cpython-37m-darwin.so
-test_slice.dat
-test_proj.dat
-
 vortrace.egg-info/
 __pycache__/
 dist/
@@ -14,4 +10,3 @@ vorenv/
 .eggs/
 
 *.so
-*.npy
