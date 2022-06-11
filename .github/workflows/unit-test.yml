@@ -21,11 +21,10 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install pylint pytest
-          python3 -m pip install ./
+          python3 -m pip install .[test]
       - name: Lint with Google style guide
         run: |
           python3 -m pylint vortrace
       - name: Test with pytest
         run: |
-          pytest
+          python3 -m pytest

@@ -23,4 +23,6 @@ setup(name='vortrace',
       packages=['vortrace'],
       install_requires=['numpy', 'numba', 'pybind11'],
       setup_requires=['pybind11'],
+      extra_requires={'dev': ['h5py', 'pylint', 'pytest'],
+                      'test': ['h5py', 'pylint', 'pytest']}
       ext_modules=ext_modules)
