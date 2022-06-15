@@ -11,6 +11,7 @@ Todo:
 """
 
 import Cvortrace
+from vortrace import grid as gr
 import numpy as np
 
 
@@ -64,27 +65,42 @@ class ProjectionCloud:
 
         return pos_start, pos_end
 
-    def projection(self, xrng, yrng, npix, zrng=None):
-        xrng = np.array(xrng)
-        yrng = np.array(yrng)
-        npix = np.array(npix)
+    def projection(self,
+                   extent,
+                   nres,
+                   bounds,
+                   center,
+                   proj=None,
+                   yaw=0.,
+                   pitch=0.,
+                   roll=0.):
 
-        assert xrng.size == 2
-        assert yrng.size == 2
-        assert npix.size == 2
+        s, e = self._make_grid([nres, nres], extent, extent, bounds)
 
-        if zrng is not None:
-            zrng = np.array(zrng)
-            assert zrng.size == 2
-        else:
-            zrng = np.array([self.boundbox[4], self.boundbox[5]])
+        print(s[0])
 
-        pos_start, pos_end = self._make_grid(npix, xrng, yrng, zrng)
+        pos_start, pos_end = gr.generate_projection_grid(extent,
+                                                     nres,
+                                                     bounds,
+                                                     center,
+                                                     proj=proj,
+                                                     yaw=yaw,
+                                                     pitch=pitch,
+                                                     roll=roll)
+        
+        print(pos_start[0][0])
+
+        # Flatten before feeding into backend.
+        # TODO: make C backend accept arbitrary shape?
+        orig_shape = pos_start.shape
+        pos_start = pos_start.reshape(-1, pos_start.shape[-1])
+        pos_end = pos_end.reshape(-1, pos_end.shape[-1])
+
+        # Actually do the projection using the Cvortrace bakend.
         proj = Cvortrace.Projection(pos_start, pos_end)
         proj.makeProjection(self._cloud)
         dat = proj.returnProjection()
 
-        print(dat)
-
-        dat = np.reshape(dat, npix)
+        # Reshape before returning.
+        dat = np.reshape(dat, orig_shape[:-1])
         return dat
