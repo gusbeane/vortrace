@@ -14,7 +14,7 @@ import Cvortrace
 import numpy as np
 
 
-class ProjectionCloud(object):
+class ProjectionCloud:
     """Object for making projections through Voronoi mesh.
 
     Organizes simple wrappers around the underlying Cvortrace package, which
