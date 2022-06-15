@@ -12,3 +12,4 @@ vorenv/
 .eggs/
 
 *.so
+run/
