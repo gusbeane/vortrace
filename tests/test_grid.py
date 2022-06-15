@@ -25,6 +25,16 @@ class TestBaseGrid:
         assert grid[-1][-1][0] == 63.5 / 64.
         assert grid[0][0][1] == 0.5 / (128. / 3.)
         assert grid[-1][-1][1] == 127.5 / (128 / 3.)
+    
+    def test_offset(self):
+        grid0 = gr.generate_base_grid([3, 4], 64)
+        assert grid0.shape == (64, 64, 3)
+
+        # Check some specific values of the grid.
+        assert grid0[0][0][0] == 3 + 0.5 / 64.
+        assert grid0[-1][-1][0] == 3 + 63.5 / 64.
+        assert grid0[0][0][1] == 3 + 0.5 / 64.
+        assert grid0[-1][-1][1] == 3 + 63.5 / 64.
 
 
 class TestProjectionGrid:

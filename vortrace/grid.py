@@ -35,11 +35,14 @@ def _generate_base_grid(extent, nres):
     deltax = (extent[0][1] - extent[0][0]) / (nres[0])
     deltay = (extent[1][1] - extent[1][0]) / (nres[1])
 
+    minx = extent[0][0]
+    miny = extent[1][0]
+
     # Now create grid.
     for i in range(nres[0]):
         for j in range(nres[1]):
-            x = deltax * (i + 0.5)
-            y = deltay * (j + 0.5)
+            x = deltax * (i + 0.5) + minx
+            y = deltay * (j + 0.5) + miny
 
             grid[i][j][0] = x
             grid[i][j][1] = y
