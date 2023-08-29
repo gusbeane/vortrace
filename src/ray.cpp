@@ -82,8 +82,9 @@ void Ray::integrate(const PointCloud &cloud)
 
   dens_col = 0.0;
 
+  int not_done = 1;
   //While we haven't reached the last point
-  while(true)
+  while(not_done)
   {
     //Look for the split point
     //First find the distance from r_start of the split point along dir
@@ -92,48 +93,45 @@ void Ray::integrate(const PointCloud &cloud)
     pos[0] = pos_start[0] + s * dir[0];
     pos[1] = pos_start[1] + s * dir[1];
     pos[2] = pos_start[2] + s * dir[2];
+    
     //Neighbour search for this position
-    stree_id = cloud.checkMode(pos, &mode);
+    stree_id = cloud.checkMode(pos, ctree_id, ntree_id, &mode);
+    
+    // mode has the following values:
+    //   0: if we are on an edge between ctree_id and ntree_id
+    //   1: if we are on an edge between ctree_id and another cell(s)
+    //   2: if we are on an edge between ntree_id and another cell(s)
+    //   3: if we are not on an edge between either ctree_id and ntree_id
+    
+    switch(mode) {
+      case 0:
+        ds = s - pts[current].s;
+        dens_col += ds * cloud.get_dens(ctree_id);
 
-    if(mode==2)
-    {
-      printf("Unlucky! Your projection intersects with an edge shared by three Voronoi cells.\n");
-      printf("This is not yet supported.\n");
-      exit(-1);
-    }
-
-    if(mode==3)
-    {
-      printf("Unlucky! Your projection intersects with a vertex shared by four Voronoi cells.\n");
-      printf("This is not yet supported.\n");
-      exit(-1);
-    }
-
-    //If split point was on boundary, integrate
-    //then move on to next interval
-    if((stree_id == ctree_id) || (stree_id == ntree_id))
-    {
-      ds = s - pts[current].s;
-      dens_col += ds * cloud.get_dens(ctree_id);
-
-      ds = pts[next].s - s;
-      dens_col += ds * cloud.get_dens(ntree_id);
-      //Move on
-      current = pts[current].next;
-      ctree_id = pts[current].tree_id;
-      next = pts[current].next;
-      //Check to see if we reached the end
-      if(next == SIZE_MAX)
+        ds = pts[next].s - s;
+        dens_col += ds * cloud.get_dens(ntree_id);
+        
+        //Move on
+        current = pts[current].next;
+        ctree_id = pts[current].tree_id;
+        next = pts[current].next;
+        
+        //Check to see if we reached the end
+        if(next == SIZE_MAX)
+          not_done = 0;
+        ntree_id = pts[next].tree_id;
         break;
-      ntree_id = pts[next].tree_id;
-    }
-    else
-    {
-      //Add new point
-      pts.emplace_back(stree_id, next, s);
-      next = pts.size() - 1;
-      pts[current].next = next;
-      ntree_id = stree_id;
+      case 1:
+        printf("Unlucky! mode=1\n");
+        exit(-1);
+      case 2:
+        printf("Unlucky! mode=2\n");
+        exit(-1);
+      case 3:
+        pts.emplace_back(stree_id, next, s);
+        next = pts.size() - 1;
+        pts[current].next = next;
+        ntree_id = stree_id;
     }
   } //while()
 }

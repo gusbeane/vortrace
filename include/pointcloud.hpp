@@ -34,8 +34,8 @@ class PointCloud
     size_t queryTree(const MyFloat query_pt[3]) const;
     size_t queryTree(const cartarr_t &query_pt) const;
 
-    size_t checkMode(const MyFloat query_pt[3], int *mode) const;
-    size_t checkMode(const cartarr_t &query_pt, int *mode) const;
+    size_t checkMode(const MyFloat query_pt[3], size_t ctree_id, size_t ntree_id, int *mode) const;
+    size_t checkMode(const cartarr_t &query_pt, size_t ctree_id, size_t ntree_id, int *mode) const;
 
     //Getters, we need some read-only access to data
     std::array<MyFloat,6> get_subbox() const {return subbox;}

@@ -7,7 +7,7 @@
 #include <pybind11/numpy.h>
 #include <iostream>
 
-#define TOLERANCE 1E-12
+#define TOLERANCE 1E-9
 
 namespace py = pybind11;
 
@@ -124,33 +124,46 @@ size_t PointCloud::queryTree(const cartarr_t &query_pt) const
   return result;
 }
 
-size_t PointCloud::checkMode(const MyFloat query_pt[3], int *mode) const
+size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id, 
+                           size_t ntree_id, int *mode) const
 {
   size_t result[4];
   MyFloat r2[4]; //
   
   tree->knnSearch(&query_pt[0], 4, &result[0], &r2[0]);
   
-  if(r2[1]-r2[0]>TOLERANCE)
-    *mode = 0; // normal mode, we are in the middle of a cell
-  else
-  {
-    *mode = 1;
-    // we are on a face, edge, or vertex
-    if(r2[2] - r2[0] < TOLERANCE) // we are on an edge or vertex
-    {
-      *mode = 2;
-      if(r2[3] - r2[0] < TOLERANCE) // we are on a vertex
+  // Set mode to initially be 3
+  // We want it set to be 
+  //   0: if we are on an edge between ctree_id and ntree_id
+  //   1: if we are on an edge between ctree_id and another cell(s)
+  //   2: if we are on an edge between ntree_id and another cell(s)
+  //   3: if we are not on an edge between either ctree_id and ntree_id
         *mode = 3;
+
+  for(int i=0; i<4; i++)
+    if(r2[i]-r2[0] <= TOLERANCE)
+    {
+      if(result[i]==ctree_id)
+        *mode -= 2;
+      if(result[i]==ntree_id)
+        *mode -= 1;
     }
+  
+  if(*mode==1 || *mode==2){
+    printf("mode=%d, ctree_id=%ld, ntree_id=%ld\n", *mode, ctree_id, ntree_id);
+    printf("r2=%g|%g|%g|%g\n", r2[0], r2[1], r2[2], r2[3]);
+    printf("r2-r2[0]=%g|%g|%g|%g\n", r2[0]-r2[0], r2[1]-r2[0], r2[2]-r2[0], r2[3]-r2[0]);
+    printf("result=%ld|%ld|%ld|%ld\n", result[0], result[1], result[2], result[3]);
   }
+
 
   return result[0];
 }
 
-size_t PointCloud::checkMode(const cartarr_t &query_pt, int *mode) const
+size_t PointCloud::checkMode(const cartarr_t &query_pt, size_t ctree_id, 
+                             size_t ntree_id, int *mode) const
 {
   //Need native array to pass to knnSearch
   MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
-  return checkMode(query_pt_native, mode);
+  return checkMode(query_pt_native, ctree_id, ntree_id, mode);
 }
