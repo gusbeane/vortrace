@@ -127,10 +127,8 @@ size_t PointCloud::queryTree(const cartarr_t &query_pt) const
 size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id, 
                            size_t ntree_id, int *mode) const
 {
-  size_t result[4];
-  MyFloat r2[4]; //
-  
-  tree->knnSearch(&query_pt[0], 4, &result[0], &r2[0]);
+  size_t result[8];
+  MyFloat r2[8]; //
   
   // Set mode to initially be 3
   // We want it set to be 
@@ -138,24 +136,44 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
   //   1: if we are on an edge between ctree_id and another cell(s)
   //   2: if we are on an edge between ntree_id and another cell(s)
   //   3: if we are not on an edge between either ctree_id and ntree_id
-        *mode = 3;
 
-  for(int i=0; i<4; i++)
+  *mode = 3;
+  int i = 1;
+
+  tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
+  
+  if(result[0]==ctree_id)
+    *mode -= 2;
+  if(result[0]==ntree_id)
+    *mode -= 1;
+
+  while(i < 8)
+  {
     if(r2[i]-r2[0] <= TOLERANCE)
     {
       if(result[i]==ctree_id)
         *mode -= 2;
       if(result[i]==ntree_id)
         *mode -= 1;
+      
+      if(*mode == 0)
+        break;
+
+      i += 1;
+      tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
     }
-  
+    else{
+      break;
+    }
+  }
+
+// Print debug info
   if(*mode==1 || *mode==2){
     printf("mode=%d, ctree_id=%ld, ntree_id=%ld\n", *mode, ctree_id, ntree_id);
     printf("r2=%g|%g|%g|%g\n", r2[0], r2[1], r2[2], r2[3]);
     printf("r2-r2[0]=%g|%g|%g|%g\n", r2[0]-r2[0], r2[1]-r2[0], r2[2]-r2[0], r2[3]-r2[0]);
     printf("result=%ld|%ld|%ld|%ld\n", result[0], result[1], result[2], result[3]);
   }
-
 
   return result[0];
 }
