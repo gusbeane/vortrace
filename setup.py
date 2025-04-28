@@ -60,7 +60,7 @@ setup(
         "test": ["h5py", "pylint", "pytest"],
     },
     # replace your Pybind11Extension with a single CMakeExtension
-    ext_modules=[CMakeExtension("Cvortrace", sourcedir=".")],
+    ext_modules=[CMakeExtension("vortrace.Cvortrace", sourcedir=".")],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
 )
