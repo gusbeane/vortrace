@@ -28,10 +28,8 @@ class TestProjection:
         bounds = [0., BoxSize]
         npix = 128
         center = [BoxSize/2., BoxSize/2., BoxSize/2.]
-        dat = pc.projection(extent, npix, bounds, None)
+        dat = pc.grid_projection(extent, npix, bounds, None)
 
         ref_dat = np.load('tests/test_data/galaxy_interaction-proj.npy')
 
         np.testing.assert_array_equal(dat, ref_dat)
-
-        np.save('tests/test_data/galaxy_interaction-proj.npy', dat)
