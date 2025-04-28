@@ -35,8 +35,8 @@ Projection::Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_
   // Allocate and load in arrrays.
   ngrid = buf_pos_start.size/3;
 
-  pts_start.reserve(ngrid);
-  pts_end.reserve(ngrid);
+  pts_start.resize(ngrid);
+  pts_end.resize(ngrid);
 
   for(size_t i=0; i<ngrid; i++)
   {

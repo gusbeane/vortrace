@@ -11,7 +11,9 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def("buildTree", &PointCloud::buildTree);
 
     py::class_<Projection>(m, "Projection")
-        .def(py::init<py::array_t<MyFloat>, py::array_t<MyFloat>>())
+        .def(py::init<
+            py::array_t<MyFloat, py::array::c_style | py::array::forcecast>,
+            py::array_t<MyFloat, py::array::c_style | py::array::forcecast>>())
         .def("makeProjection", &Projection::makeProjection, py::call_guard<py::gil_scoped_release>())
         .def("saveProjection", &Projection::saveProjection)
         .def("returnProjection", &Projection::returnProjection);
