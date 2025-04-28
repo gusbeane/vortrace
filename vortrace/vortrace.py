@@ -45,23 +45,12 @@ class ProjectionCloud:
         self._cloud.loadPoints(pos, dens, boundbox)
         self._cloud.buildTree()
 
-    def projection(self,
-                   extent,
-                   nres,
-                   bounds,
-                   center,
-                   proj=None,
-                   yaw=0.,
-                   pitch=0.,
-                   roll=0.):
+    def grid_projection(self, extent, nres, bounds, center, proj=None,
+                        yaw=0., pitch=0., roll=0.):
 
-        pos_start, pos_end = gr.generate_projection_grid(extent,
-                                                         nres,
-                                                         bounds,
-                                                         center,
-                                                         proj=proj,
-                                                         yaw=yaw,
-                                                         pitch=pitch,
+        pos_start, pos_end = gr.generate_projection_grid(extent, nres, bounds,
+                                                         center, proj=proj,
+                                                         yaw=yaw, pitch=pitch,
                                                          roll=roll)
 
         # Flatten before feeding into backend.
@@ -78,3 +67,32 @@ class ProjectionCloud:
         # Reshape before returning.
         dat = np.reshape(dat, orig_shape[:-1])
         return dat
+
+    def projection(self, pos_start, pos_end):
+        """Make a projection through the point cloud.
+
+        Args:
+            pos_start (array of float): Starting points of the projection.
+            pos_end (array of float): Ending points of the projection.
+
+        Returns:
+            dat (array of float): The projection data.
+        """
+        # ——— enforce numpy arrays ———
+        pos_start = np.asarray(pos_start)
+        pos_end   = np.asarray(pos_end)
+
+        # ——— enforce correct dtype and C‑contiguity ———
+        if pos_start.dtype != np.float64 or not pos_start.flags['C_CONTIGUOUS']:
+            pos_start = np.ascontiguousarray(pos_start, dtype=np.float64)
+        if pos_end.dtype != np.float64 or not pos_end.flags['C_CONTIGUOUS']:
+            pos_end = np.ascontiguousarray(pos_end,   dtype=np.float64)
+
+        # ——— sanity‐check shape ———
+        if pos_start.ndim != 2 or pos_end.ndim != 2 or pos_start.shape != pos_end.shape:
+            raise ValueError("pos_start / pos_end must be 2D arrays of identical shape")
+
+        # now safe to call into C++
+        proj = Cvortrace.Projection(pos_start, pos_end)
+        proj.makeProjection(self._cloud)
+        return proj.returnProjection()
