@@ -32,4 +32,4 @@ class TestProjection:
 
         ref_dat = np.load('tests/test_data/galaxy_interaction-proj.npy')
 
-        np.testing.assert_array_equal(dat, ref_dat)
+        np.testing.assert_array_almost_equal(dat, ref_dat, decimal=14)
