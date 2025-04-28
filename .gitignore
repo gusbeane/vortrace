@@ -13,3 +13,4 @@ vorenv/
 
 *.so
 run/
+.DS_Store
