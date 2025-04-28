@@ -34,6 +34,10 @@ jobs:
           pip install .
           pip install pylint pytest h5py
 
+      - name: Build Cvortrace in place
+        run: |
+          python setup.py build_ext --inplace
+
       - name: Lint with pylint
         run: |
           pylint vortrace
