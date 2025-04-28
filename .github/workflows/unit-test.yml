@@ -31,12 +31,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install .
+          pip install -e .
           pip install pylint pytest h5py
-
-      - name: Build Cvortrace in place
-        run: |
-          python setup.py build_ext --inplace
 
       - name: Lint with pylint
         run: |
