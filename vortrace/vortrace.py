@@ -45,7 +45,7 @@ class ProjectionCloud:
         self._cloud.loadPoints(pos, dens, boundbox)
         self._cloud.buildTree()
 
-    def grid_projection(self, extent, nres, bounds, center, proj=None,
+    def grid_projection(self, extent, nres, bounds, center, *, proj=None,
                         yaw=0., pitch=0., roll=0.):
 
         pos_start, pos_end = gr.generate_projection_grid(extent, nres, bounds,
@@ -89,8 +89,10 @@ class ProjectionCloud:
             pos_end = np.ascontiguousarray(pos_end,   dtype=np.float64)
 
         # ——— sanity‐check shape ———
-        if pos_start.ndim != 2 or pos_end.ndim != 2 or pos_start.shape != pos_end.shape:
-            raise ValueError("pos_start / pos_end must be 2D arrays of identical shape")
+        if pos_start.ndim != 2 or pos_end.ndim != 2 \
+            or pos_start.shape != pos_end.shape:
+            raise ValueError('pos_start / pos_end must be 2D arrays\
+                              of identical shape')
 
         # now safe to call into C++
         proj = Cvortrace.Projection(pos_start, pos_end)
