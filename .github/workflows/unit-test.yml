@@ -36,7 +36,7 @@ jobs:
 
       - name: Lint with pylint
         run: |
-          pylint vortrace
+          pylint --rcfile=.pylintrc vortrace
 
       - name: Test with pytest
         run: |
