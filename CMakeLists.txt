@@ -31,6 +31,13 @@ file(GLOB SRC_CPP ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 # --- build the Python extension ------------------
 pybind11_add_module(Cvortrace ${SRC_CPP})
+
+# Build the extension directly into the vortrace package so that
+# `from .Cvortrace import …` just works in‑place.
+set_target_properties(Cvortrace PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/vortrace/vortrace
+)
+
 target_compile_features(Cvortrace PRIVATE cxx_std_11)
 target_compile_definitions(Cvortrace PRIVATE TIMING_INFO)
 
