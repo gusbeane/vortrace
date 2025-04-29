@@ -1,8 +1,35 @@
+[project]
+name = "vortrace"
+version = "0.1"
+description = "Fast projections through Voronoi meshes."
+readme = "README.md"
+requires-python = ">=3.7"
+
+authors = [
+  { name = "Angus Beane", email = "angus.beane@cfa.harvard.edu" },
+  { name = "Matthew Smith", email = "msmith@mpa-garching.mpg.de" },
+]
+
+dependencies = [
+  "numpy",
+  "numba",
+  "pybind11>=2.6.0",
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: MacOS :: MacOS X",
+]
+
+[project.optional-dependencies]
+dev  = ["h5py","pylint","pytest"]
+test = ["h5py","pylint","pytest"]
+
 [build-system]
 requires = [
-    "setuptools>=42",
-    "wheel",
-    "cmake>=3.14",
-    "pybind11>=2.6.0"
+  "setuptools>=61.0",
+  "wheel",
+  "scikit-build-core>=0.10.0",
+  "cmake>=3.14",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "scikit_build_core.build"

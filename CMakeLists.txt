@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.15)
 
 # ensure we search the active conda env first
 if(DEFINED ENV{CONDA_PREFIX})
