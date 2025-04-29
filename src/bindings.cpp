@@ -38,7 +38,7 @@ PYBIND11_MODULE(Cvortrace, m) {
             [](const Ray &r){
               py::list out;
               for (auto &seg : r.get_segments()) {
-                out.append(py::make_tuple(seg.cell_id, seg.s, seg.ds));
+                out.append(py::make_tuple(seg.cell_id, seg.s, seg.s_edge, seg.ds));
               }
               return out;
             }

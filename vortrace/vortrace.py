@@ -99,11 +99,12 @@ class ProjectionCloud:
         proj.makeProjection(self._cloud)
         return proj.returnProjection()
     
-    def single_projection(self, pos_start, pos_end):
+    def single_projection(self, pos_start, pos_end, return_midpoint=True):
         """Perform projection for a single ray and return column density and per-segment info.
         Args:
-            pos_start (array): shape (1,3) start point
-            pos_end   (array): shape (1,3) end point
+            pos_start        (array): shape (1,3) start point
+            pos_end          (array): shape (1,3) end point
+            return_mindpoint (bool, optional): if True, return midpoint of each segment
         Returns:
             dens (float), cell_ids (ndarray), s_vals (ndarray), ds_vals (ndarray)
         """
@@ -141,40 +142,55 @@ class ProjectionCloud:
         # unpack segment info into arrays
         cell_ids_raw = np.array([seg[0] for seg in segments], dtype=int)
         s_raw = np.array([seg[1] for seg in segments], dtype=np.float64)
-        ds_raw = np.array([seg[2] for seg in segments], dtype=np.float64)
+        sedge_raw = np.array([seg[2] for seg in segments], dtype=np.float64)
+        ds_raw = np.array([seg[3] for seg in segments], dtype=np.float64)
         # vectorized merge of duplicate cell_ids: first and last unique, interior appear in consecutive pairs
         L = cell_ids_raw.size
-        if L <= 2:
+        if L == 2:
             cell_ids = cell_ids_raw
             s_vals = s_raw
+            smid_vals = sedge_raw
             ds_vals = ds_raw
-        else:
+        elif L > 2:
             mids = np.arange(1, L-1, 2)
             # assert matching start s for each duplicate pair
             if not np.allclose(s_raw[mids], s_raw[mids+1]):
                 raise ValueError("mismatched s values in duplicate segments")
+            
             # pick unique cell_ids
             cell_ids = np.concatenate((
                 [cell_ids_raw[0]],
                 cell_ids_raw[mids],
                 [cell_ids_raw[-1]]
             ))
+
             # pick s values: first, one per pair, last
             s_vals = np.concatenate((
                 [s_raw[0]],
                 s_raw[mids],
                 [s_raw[-1]]
             ))
+
+            # compute smid values for each pair
+            smid_vals = np.concatenate((
+                [sedge_raw[0]/2.],
+                (sedge_raw[mids] + sedge_raw[mids+1]) / 2.,
+                [(sedge_raw[-1]+np.linalg.norm(pos_end-pos_start)) / 2.]
+            ))
+            
             # sum ds values across each duplicate pair
             ds_vals = np.concatenate((
                 [ds_raw[0]],
                 ds_raw[mids] + ds_raw[mids+1],
                 [ds_raw[-1]]
             ))
+        else:
+            raise ValueError("pos_start and pos_end are in the same cell")
 
         if not np.isclose(dens, np.sum(self.dens[cell_ids]*ds_vals)):
-            raise ValueError("extracted ray cells and ds does not give consistent density: {} != {}".format(
-                dens, np.sum(self.dens[cell_ids]*ds_vals)))
+            raise ValueError("extracted ray cells and ds does not give consistent density: {} != {}".format(dens, np.sum(self.dens[cell_ids]*ds_vals)))
 
-        return dens, cell_ids, s_vals, ds_vals
-
+        if return_midpoint:
+            return dens, cell_ids, smid_vals, ds_vals
+        else:
+            return dens, cell_ids, s_vals, ds_vals

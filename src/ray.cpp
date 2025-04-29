@@ -107,13 +107,15 @@ void Ray::integrate(const PointCloud &cloud)
     
     switch(mode) {
       case 0:
+        // pts[*].s gives the position along the ray to the mesh generating point
+        // s gives the position along the ray to the edge between cells
         ds = s - pts[current].s;
         dens_col += ds * cloud.get_dens(ctree_id);
-        segments.push_back({ ctree_id, pts[current].s, ds });
+        segments.push_back({ ctree_id, pts[current].s, s, ds });
 
         ds = pts[next].s - s;
         dens_col += ds * cloud.get_dens(ntree_id);
-        segments.push_back({ ntree_id, pts[next].s, ds });
+        segments.push_back({ ntree_id, pts[next].s, s, ds });
         
         //Move on
         current = pts[current].next;

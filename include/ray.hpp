@@ -29,6 +29,7 @@ class Ray
     struct Segment {
       size_t cell_id; // id of cell which intersects ray
       MyFloat s;      // distance from start of ray to the intersection point
+      MyFloat s_edge; // distance from start of ray to one edge
       MyFloat ds;     // intersection width
     };
 
