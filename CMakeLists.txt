@@ -41,4 +41,5 @@ target_compile_definitions(Cvortrace PRIVATE TIMING_INFO)
 # add_test(NAME RayTests COMMAND test_ray)
 
 # --- install rule so `cmake --install` works -------
-install(TARGETS Cvortrace LIBRARY DESTINATION ${Python3_SITEARCH})
+install(TARGETS Cvortrace 
+        LIBRARY DESTINATION ${Python3_SITEARCH}/vortrace)
