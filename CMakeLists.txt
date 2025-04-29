@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
+
+# ensure we search the active conda env first
+if(DEFINED ENV{CONDA_PREFIX})
+  list(APPEND CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX})
+endif()
+
 project(vortrace LANGUAGES CXX)
 
 # find Python
