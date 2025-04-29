@@ -26,7 +26,16 @@ class Ray
         tree_id(tree_id), next(next), s(s) {}
     };
 
+    struct Segment {
+      size_t cell_id; // id of cell which intersects ray
+      MyFloat s;      // distance from start of ray to the intersection point
+      MyFloat ds;     // intersection width
+    };
+
+    std::vector<Segment> segments;
+
     std::vector<RayPoint> pts;
+    
 
     MyFloat dens_col = 0;
 
@@ -41,6 +50,7 @@ class Ray
 
     //Getters
     MyFloat get_dens_col() const {return dens_col;}
+    const std::vector<Segment>& get_segments() const {return segments;}
 
 };
 

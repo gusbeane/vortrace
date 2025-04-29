@@ -1,4 +1,3 @@
-
 #include "ray.hpp"
 #include <limits>
 #include <iostream>
@@ -61,6 +60,9 @@ void Ray::integrate(const PointCloud &cloud)
   cartarr_t pos;
   int mode;
 
+  dens_col = 0.0;
+  segments.clear();
+
   //Find nearest neighbour for start and end ray points
 
   pts[0].tree_id = cloud.queryTree(pos_start);
@@ -69,18 +71,18 @@ void Ray::integrate(const PointCloud &cloud)
   //If tree_id matches, in same cell already so integrate and stop
   if(pts[0].tree_id == pts[1].tree_id)
     {
-      ds = pts[1].s - pts[0].s;
-      dens_col = ds * cloud.get_dens(pts[0].tree_id);
-      return;
+      throw std::runtime_error("Start and end point are in the same cell.");
+      // ds = pts[1].s - pts[0].s;
+      // dens_col = ds * cloud.get_dens(pts[0].tree_id);
+      // segments.push_back{{pts[0].tree_id, pts[0].s, ds}};
+      // return;
     }
 
   //Otherwise start integration
   current = 0;
-  ctree_id = pts[0].tree_id;
+  ctree_id = pts[current].tree_id;
   next = 1;
-  ntree_id = pts[1].tree_id;
-
-  dens_col = 0.0;
+  ntree_id = pts[next].tree_id;
 
   int not_done = 1;
   //While we haven't reached the last point
@@ -107,9 +109,11 @@ void Ray::integrate(const PointCloud &cloud)
       case 0:
         ds = s - pts[current].s;
         dens_col += ds * cloud.get_dens(ctree_id);
+        segments.push_back({ ctree_id, pts[current].s, ds });
 
         ds = pts[next].s - s;
         dens_col += ds * cloud.get_dens(ntree_id);
+        segments.push_back({ ntree_id, pts[next].s, ds });
         
         //Move on
         current = pts[current].next;

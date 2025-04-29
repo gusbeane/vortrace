@@ -10,7 +10,7 @@ Todo:
 
 """
 
-from .Cvortrace import PointCloud, Projection
+from .Cvortrace import PointCloud, Projection, Ray
 from vortrace import grid as gr
 import numpy as np
 
@@ -30,8 +30,8 @@ class ProjectionCloud:
 """
 
     def __init__(self, pos, dens, boundbox=None):
-        pos = np.array(pos)
-        dens = np.array(dens)
+        self.pos = np.array(pos)
+        self.dens = np.array(dens)
 
         if boundbox is None:
             boundbox = [
@@ -98,3 +98,83 @@ class ProjectionCloud:
         proj = Projection(pos_start, pos_end)
         proj.makeProjection(self._cloud)
         return proj.returnProjection()
+    
+    def single_projection(self, pos_start, pos_end):
+        """Perform projection for a single ray and return column density and per-segment info.
+        Args:
+            pos_start (array): shape (1,3) start point
+            pos_end   (array): shape (1,3) end point
+        Returns:
+            dens (float), cell_ids (ndarray), s_vals (ndarray), ds_vals (ndarray)
+        """
+        # enforce numpy arrays
+        pos_start = np.asarray(pos_start)
+        pos_end = np.asarray(pos_end)
+        # allow either 1D (3,) or 2D (1,3) inputs
+        if pos_start.ndim == 1 and pos_end.ndim == 1:
+            if pos_start.shape != (3,) or pos_end.shape != (3,):
+                raise ValueError('pos_start and pos_end must have shape (3,) or (1,3)')
+            pos_start = pos_start[np.newaxis, :]
+            pos_end = pos_end[np.newaxis, :]
+        elif pos_start.ndim == 2 and pos_end.ndim == 2:
+            if pos_start.shape != (1,3) or pos_end.shape != (1,3):
+                raise ValueError('pos_start and pos_end must have shape (3,) or (1,3)')
+        else:
+            raise ValueError('pos_start and pos_end must have shape (3,) or (1,3)')
+
+        # ——— enforce dtype and contiguity ———
+        if pos_start.dtype != np.float64 or not pos_start.flags['C_CONTIGUOUS']:
+            pos_start = np.ascontiguousarray(pos_start, dtype=np.float64)
+        if pos_end.dtype != np.float64 or not pos_end.flags['C_CONTIGUOUS']:
+            pos_end = np.ascontiguousarray(pos_end, dtype=np.float64)
+        
+        # extract single vectors
+        start = pos_start[0]
+        end = pos_end[0]
+        
+        # compute using Ray
+        ray = Ray(start, end)
+        ray.integrate(self._cloud)
+        dens = ray.get_dens_col()
+        segments = ray.get_segments()
+        
+        # unpack segment info into arrays
+        cell_ids_raw = np.array([seg[0] for seg in segments], dtype=int)
+        s_raw = np.array([seg[1] for seg in segments], dtype=np.float64)
+        ds_raw = np.array([seg[2] for seg in segments], dtype=np.float64)
+        # vectorized merge of duplicate cell_ids: first and last unique, interior appear in consecutive pairs
+        L = cell_ids_raw.size
+        if L <= 2:
+            cell_ids = cell_ids_raw
+            s_vals = s_raw
+            ds_vals = ds_raw
+        else:
+            mids = np.arange(1, L-1, 2)
+            # assert matching start s for each duplicate pair
+            if not np.allclose(s_raw[mids], s_raw[mids+1]):
+                raise ValueError("mismatched s values in duplicate segments")
+            # pick unique cell_ids
+            cell_ids = np.concatenate((
+                [cell_ids_raw[0]],
+                cell_ids_raw[mids],
+                [cell_ids_raw[-1]]
+            ))
+            # pick s values: first, one per pair, last
+            s_vals = np.concatenate((
+                [s_raw[0]],
+                s_raw[mids],
+                [s_raw[-1]]
+            ))
+            # sum ds values across each duplicate pair
+            ds_vals = np.concatenate((
+                [ds_raw[0]],
+                ds_raw[mids] + ds_raw[mids+1],
+                [ds_raw[-1]]
+            ))
+
+        if not np.isclose(dens, np.sum(self.dens[cell_ids]*ds_vals)):
+            raise ValueError("extracted ray cells and ds does not give consistent density: {} != {}".format(
+                dens, np.sum(self.dens[cell_ids]*ds_vals)))
+
+        return dens, cell_ids, s_vals, ds_vals
+
