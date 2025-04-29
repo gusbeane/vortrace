@@ -1,11 +1,19 @@
 #include "ray.hpp"
-#include <limits>
-#include <iostream>
-#include <cmath>
 
+// Add dynamic reserve helpers
+void Ray::ensure_segments_capacity() {
+  if (segments.size() >= segments.capacity()) {
+    size_t new_cap = segments.capacity() ? segments.capacity() * 2 : RAY_PTS_RESERVE;
+    segments.reserve(new_cap);
+  }
+}
 
-// #include <iostream>
-#include <fstream>
+void Ray::ensure_pts_capacity() {
+  if (pts.size() >= pts.capacity()) {
+    size_t new_cap = pts.capacity() ? pts.capacity() * 2 : RAY_PTS_RESERVE;
+    pts.reserve(new_cap);
+  }
+}
 
 Ray::Ray(const cartarr_t &start, const cartarr_t &end)
 {
@@ -62,6 +70,7 @@ void Ray::integrate(const PointCloud &cloud)
 
   dens_col = 0.0;
   segments.clear();
+  // dynamic doubling: initial reserve done in constructor, further doubling handled automatically
 
   //Find nearest neighbour for start and end ray points
 
@@ -111,10 +120,12 @@ void Ray::integrate(const PointCloud &cloud)
         // s gives the position along the ray to the edge between cells
         ds = s - pts[current].s;
         dens_col += ds * cloud.get_dens(ctree_id);
+        ensure_segments_capacity();
         segments.push_back({ ctree_id, pts[current].s, s, ds });
 
         ds = pts[next].s - s;
         dens_col += ds * cloud.get_dens(ntree_id);
+        ensure_segments_capacity();
         segments.push_back({ ntree_id, pts[next].s, s, ds });
         
         //Move on
@@ -134,6 +145,7 @@ void Ray::integrate(const PointCloud &cloud)
         printf("Unlucky! mode=2\n");
         exit(-1);
       case 3:
+        ensure_pts_capacity();
         pts.emplace_back(stree_id, next, s);
         next = pts.size() - 1;
         pts[current].next = next;

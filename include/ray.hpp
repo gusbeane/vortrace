@@ -1,7 +1,7 @@
 #ifndef RAY_HPP
 #define RAY_HPP
 
-#define RAY_PTS_RESERVE 200
+#define RAY_PTS_RESERVE 1000
 
 #include "pointcloud.hpp"
 #include "mytypes.hpp"
@@ -34,9 +34,10 @@ class Ray
     };
 
     std::vector<Segment> segments;
-
     std::vector<RayPoint> pts;
-    
+    // dynamic reserve helpers
+    void ensure_segments_capacity();
+    void ensure_pts_capacity();
 
     MyFloat dens_col = 0;
 
