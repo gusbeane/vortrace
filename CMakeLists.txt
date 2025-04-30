@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
+option(BUILD_CPP_TESTS "Enable C++ unit tests (Catch2)" OFF)
+
 # ensure we search the active conda env first
 if(DEFINED ENV{CONDA_PREFIX})
   list(APPEND CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX})
@@ -17,9 +19,6 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 list(APPEND CMAKE_PREFIX_PATH "${_PYBIND11_CMAKEDIR}")
-
-# enable tests
-enable_testing()
 
 # --- find Python & pybind11 -----------------------
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
@@ -62,22 +61,26 @@ target_link_libraries(Cvortrace PRIVATE vortrace_core)
 # add_test(NAME CPPTests COMMAND test_cpp)
 
 # --- C++ unit tests with Catch2 --------------------
-find_package(Catch2 3.1.0 REQUIRED)    # require Catch2 v3.1 or newer
+if(BUILD_CPP_TESTS)
+  enable_testing()
 
-add_executable(test_cpp
-  tests/test_cpp.cpp
-)
+  find_package(Catch2 3.1.0 REQUIRED)    # require Catch2 v3.1 or newer
 
-target_include_directories(test_cpp PRIVATE
-  ${CMAKE_SOURCE_DIR}/include
-)
+  add_executable(test_cpp
+    tests/test_cpp.cpp
+  )
 
-target_link_libraries(test_cpp PRIVATE
-  Catch2::Catch2WithMain
-  vortrace_core
-)
+  target_include_directories(test_cpp PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+  )
 
-add_test(NAME CPPRayTests COMMAND test_cpp)
+  target_link_libraries(test_cpp PRIVATE
+    Catch2::Catch2WithMain
+    vortrace_core
+  )
+
+  add_test(NAME CPPRayTests COMMAND test_cpp)
+endif()
 
 # --- install rule so `cmake --install` works -------
 install(TARGETS Cvortrace 
