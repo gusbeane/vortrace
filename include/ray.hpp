@@ -10,45 +10,45 @@ class Ray
 {
   private:
 
-    cartarr_t pos_start;
-    cartarr_t pos_end;
-    cartarr_t dir;
+    Point pos_start;
+    Point pos_end;
+    Point dir;
 
     struct RayPoint
     {
 
       size_t tree_id;
       size_t next;
-      MyFloat s;
+      Float s;
 
       //Constructor
-      RayPoint(const size_t tree_id, const size_t next, const MyFloat s) :
+      RayPoint(const size_t tree_id, const size_t next, const Float s) :
         tree_id(tree_id), next(next), s(s) {}
     };
 
     struct Segment {
       size_t cell_id; // id of cell which intersects ray
-      MyFloat s;      // distance from start of ray to the intersection point
-      MyFloat s_edge; // distance from start of ray to one edge
-      MyFloat ds;     // intersection width
+      Float s;      // distance from start of ray to the intersection point
+      Float s_edge; // distance from start of ray to one edge
+      Float ds;     // intersection width
     };
 
     std::vector<Segment> segments;
     std::vector<RayPoint> pts;
 
-    MyFloat dens_col = 0;
+    Float dens_col = 0;
 
   public:
 
-    Ray(const cartarr_t &start, const cartarr_t &end);
+    Ray(const Point &start, const Point &end);
 
     //Find the distance (from pos_start) of the point splitting points idx1 and idx2
-    MyFloat findSplitPointDistance(const cartarr_t &pos1, const cartarr_t &pos2);
+    Float findSplitPointDistance(const Point &pos1, const Point &pos2);
 
     void integrate(const PointCloud &cloud);
 
     //Getters
-    MyFloat get_dens_col() const {return dens_col;}
+    Float get_dens_col() const {return dens_col;}
     const std::vector<Segment>& get_segments() const {return segments;}
 
 };

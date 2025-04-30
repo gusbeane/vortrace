@@ -1,6 +1,6 @@
 #include "ray.hpp"
 
-Ray::Ray(const cartarr_t &start, const cartarr_t &end)
+Ray::Ray(const Point &start, const Point &end)
 {
   pos_start = start;
   pos_end = end;
@@ -9,7 +9,7 @@ Ray::Ray(const cartarr_t &start, const cartarr_t &end)
   dir[1] = end[1] - start[1];
   dir[2] = end[2] - start[2];
 
-  MyFloat s = sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+  Float s = sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
   dir[0] /= s;
   dir[1] /= s;
   dir[2] /= s;
@@ -24,9 +24,9 @@ Ray::Ray(const cartarr_t &start, const cartarr_t &end)
 }
 
 //Find the distance (from pos_start) of the point splitting points pos1 and pos2
-MyFloat Ray::findSplitPointDistance(const cartarr_t &pos1, const cartarr_t &pos2)
+Float Ray::findSplitPointDistance(const Point &pos1, const Point &pos2)
 {
-  cartarr_t ppl, norm;
+  Point ppl, norm;
 
   //The (unnormalised) plane normal
   norm[0] = pos2[0] - pos1[0];
@@ -38,8 +38,8 @@ MyFloat Ray::findSplitPointDistance(const cartarr_t &pos1, const cartarr_t &pos2
   ppl[1] = 0.5 * (pos1[1] + pos2[1]) - pos_start[1];
   ppl[2] = 0.5 * (pos1[2] + pos2[2]) - pos_start[2];
 
-  MyFloat norm_dot_ppl = norm[0] * ppl[0] + norm[1] * ppl[1] + norm[2] * ppl[2];
-  MyFloat norm_dot_dir = norm[0] * dir[0] + norm[1] * dir[1] + norm[2] * dir[2];
+  Float norm_dot_ppl = norm[0] * ppl[0] + norm[1] * ppl[1] + norm[2] * ppl[2];
+  Float norm_dot_dir = norm[0] * dir[0] + norm[1] * dir[1] + norm[2] * dir[2];
 
   return norm_dot_ppl / norm_dot_dir;
 
@@ -49,8 +49,8 @@ void Ray::integrate(const PointCloud &cloud)
 {
   size_t current, next;
   size_t ctree_id, ntree_id, stree_id;
-  MyFloat s, ds;
-  cartarr_t pos;
+  Float s, ds;
+  Point pos;
   int mode;
 
   dens_col = 0.0;

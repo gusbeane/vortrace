@@ -12,14 +12,14 @@
 
 namespace py = pybind11;
 
-Projection::Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_end)
+Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 {
   // Load input python arrays into pointers
   py::buffer_info buf_pos_start = pos_start.request();
   py::buffer_info buf_pos_end = pos_end.request();
 
-  MyFloat *pos_start_ptr = (MyFloat *) buf_pos_start.ptr,
-          *pos_end_ptr = (MyFloat *) buf_pos_end.ptr;
+  Float *pos_start_ptr = (Float *) buf_pos_start.ptr,
+          *pos_end_ptr = (Float *) buf_pos_end.ptr;
   
   // Check to ensure they have the correct dimensions
   if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)

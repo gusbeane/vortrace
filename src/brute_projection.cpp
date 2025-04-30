@@ -18,7 +18,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
   }
 
   //First check extent is in point cloud bounds
-  std::array<MyFloat,6> subbox = cloud.get_subbox();
+  std::array<Float,6> subbox = cloud.get_subbox();
   if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (extent[4] < subbox[4]) || (extent[5] > subbox[5]))
@@ -37,9 +37,9 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
   size_t start_y = extent[2];
   size_t start_z = extent[4];
 
-  MyFloat deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  MyFloat deltay = (extent[3] - extent[2]) / (npix_y - 1); 
-  MyFloat deltaz = (extent[5] - extent[4]) / (npix_z - 1);
+  Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
+  Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
+  Float deltaz = (extent[5] - extent[4]) / (npix_z - 1);
 
   //resize and zero result vector(s)
   dens_proj.resize(npix_x * npix_y);
@@ -54,7 +54,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
     for(size_t j = 0; j < npix_y; j++)
       for(size_t k = 0; k < npix_z; k++)
       {
-        cartarr_t query_pt;
+        Point query_pt;
         size_t result_idx;
         query_pt[0] = start_x + deltax * i;
         query_pt[1] = start_y + deltay * j;
