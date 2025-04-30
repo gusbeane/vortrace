@@ -33,9 +33,9 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
   size_t npix_x = npix[0];
   size_t npix_y = npix[1];
   size_t npix_z = npix[2];
-  size_t start_x = extent[0];
-  size_t start_y = extent[2];
-  size_t start_z = extent[4];
+  Float start_x = extent[0];
+  Float start_y = extent[2];
+  Float start_z = extent[4];
 
   Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
   Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
