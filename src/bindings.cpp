@@ -16,7 +16,6 @@ PYBIND11_MODULE(Cvortrace, m) {
             py::array_t<Float, py::array::c_style | py::array::forcecast>,
             py::array_t<Float, py::array::c_style | py::array::forcecast>>())
         .def("makeProjection", &Projection::makeProjection, py::call_guard<py::gil_scoped_release>())
-        .def("saveProjection", &Projection::saveProjection)
         .def("returnProjection", &Projection::returnProjection);
 
     py::class_<BruteProjection>(m, "BruteProjection")

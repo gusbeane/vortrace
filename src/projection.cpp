@@ -84,31 +84,6 @@ void Projection::makeProjection(const PointCloud &cloud)
 #endif
 }
 
-/*Currently we save as text, for debugging. Smarter method should go
-here*/
-void Projection::saveProjection(const std::string savename) const
-{
-  std::cout << "Saving projection to " << savename << "...   ";
-  //First check if slice has been made
-  if(dens_proj.empty())
-  {
-    std::cout << "Projection has not yet been made. Aborting save." << std::endl;
-    return;
-  }
-
-  std::ofstream myfile(savename, std::ios::trunc);
-  if (myfile.is_open())
-  {
-    for(size_t i = 0; i < dens_proj.size(); i++)
-      myfile << dens_proj[i] << "\n";
-
-    myfile.close();
-    std::cout << "Done." << std::endl;
-  }
-  else std::cout << "Unable to open savefile." << std::endl;
-
-}
-
 py::array_t<double> Projection::returnProjection(void) const
 {
   // std::cout << "Saving projection to " << savename << "...   ";
