@@ -35,9 +35,6 @@ class Ray
 
     std::vector<Segment> segments;
     std::vector<RayPoint> pts;
-    // dynamic reserve helpers
-    void ensure_segments_capacity();
-    void ensure_pts_capacity();
 
     MyFloat dens_col = 0;
 
