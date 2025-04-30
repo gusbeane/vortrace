@@ -8,12 +8,12 @@ class BruteProjection
 {
   private:
     std::array<size_t,3> npix;
-    std::array<MyFloat,6> extent;
+    std::array<Float,6> extent;
 
-    std::vector<MyFloat> dens_proj;
+    std::vector<Float> dens_proj;
 
   public:
-    BruteProjection(std::array<size_t,3> npix, std::array<MyFloat,6> extent) : 
+    BruteProjection(std::array<size_t,3> npix, std::array<Float,6> extent) : 
       npix(npix), extent(extent) {}
 
     void makeProjection(const PointCloud &cloud);

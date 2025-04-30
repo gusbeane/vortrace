@@ -12,14 +12,14 @@
 
 namespace py = pybind11;
 
-Projection::Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_end)
+Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 {
   // Load input python arrays into pointers
   py::buffer_info buf_pos_start = pos_start.request();
   py::buffer_info buf_pos_end = pos_end.request();
 
-  MyFloat *pos_start_ptr = (MyFloat *) buf_pos_start.ptr,
-          *pos_end_ptr = (MyFloat *) buf_pos_end.ptr;
+  Float *pos_start_ptr = (Float *) buf_pos_start.ptr,
+          *pos_end_ptr = (Float *) buf_pos_end.ptr;
   
   // Check to ensure they have the correct dimensions
   if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)
@@ -35,8 +35,8 @@ Projection::Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_
   // Allocate and load in arrrays.
   ngrid = buf_pos_start.size/3;
 
-  pts_start.reserve(ngrid);
-  pts_end.reserve(ngrid);
+  pts_start.resize(ngrid);
+  pts_end.resize(ngrid);
 
   for(size_t i=0; i<ngrid; i++)
   {
@@ -82,31 +82,6 @@ void Projection::makeProjection(const PointCloud &cloud)
 #else
     std::cout << "Projection complete." << std::endl;
 #endif
-}
-
-/*Currently we save as text, for debugging. Smarter method should go
-here*/
-void Projection::saveProjection(const std::string savename) const
-{
-  std::cout << "Saving projection to " << savename << "...   ";
-  //First check if slice has been made
-  if(dens_proj.empty())
-  {
-    std::cout << "Projection has not yet been made. Aborting save." << std::endl;
-    return;
-  }
-
-  std::ofstream myfile(savename, std::ios::trunc);
-  if (myfile.is_open())
-  {
-    for(size_t i = 0; i < dens_proj.size(); i++)
-      myfile << dens_proj[i] << "\n";
-
-    myfile.close();
-    std::cout << "Done." << std::endl;
-  }
-  else std::cout << "Unable to open savefile." << std::endl;
-
 }
 
 py::array_t<double> Projection::returnProjection(void) const

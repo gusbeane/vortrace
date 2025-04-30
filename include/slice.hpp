@@ -8,13 +8,13 @@ class Slice
 {
   private:
     std::array<size_t,2> npix;
-    std::array<MyFloat,4> extent;
-    MyFloat depth;
+    std::array<Float,4> extent;
+    Float depth;
 
-    std::vector<MyFloat> dens_slice;
+    std::vector<Float> dens_slice;
 
   public:
-    Slice(std::array<size_t,2> npix, std::array<MyFloat,4> extent, MyFloat depth) : 
+    Slice(std::array<size_t,2> npix, std::array<Float,4> extent, Float depth) : 
       npix(npix), extent(extent), depth(depth) {}
 
     void makeSlice(const PointCloud &cloud);

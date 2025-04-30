@@ -17,7 +17,7 @@ void Slice::makeSlice(const PointCloud &cloud)
   }
 
   //First check extent is in cloud bounds
-  std::array<MyFloat,6> subbox = cloud.get_subbox();
+  std::array<Float,6> subbox = cloud.get_subbox();
   if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (depth < subbox[4]) || (depth > subbox[5]))
@@ -32,11 +32,11 @@ void Slice::makeSlice(const PointCloud &cloud)
   size_t npix_x = npix[0];
   size_t npix_y = npix[1];
 
-  MyFloat start_x = extent[0];
-  MyFloat start_y = extent[2];
+  Float start_x = extent[0];
+  Float start_y = extent[2];
   //Create slice(s)
-  MyFloat deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  MyFloat deltay = (extent[3] - extent[2]) / (npix_y - 1); 
+  Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
+  Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
 
   //resize result vector(s)
   dens_slice.resize(npix_x * npix_y);
@@ -50,7 +50,7 @@ void Slice::makeSlice(const PointCloud &cloud)
   for(size_t i = 0; i < npix_x; i++)
     for(size_t j = 0; j < npix_y; j++)
     {
-      MyFloat query_pt[3];
+      Point query_pt;
       size_t result_idx;
       query_pt[0] = start_x + deltax * i;
       query_pt[1] = start_y + deltay * j;

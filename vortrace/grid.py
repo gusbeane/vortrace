@@ -149,7 +149,7 @@ def _rotation_matrix_from_yaw_pitch_roll(yaw, pitch, roll):
 def generate_projection_grid(extent,
                              nres,
                              bounds,
-                             center,
+                             center, *,
                              proj=None,
                              yaw=0.,
                              pitch=0.,

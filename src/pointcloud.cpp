@@ -1,4 +1,3 @@
-
 #include "pointcloud.hpp"
 #ifdef TIMING_INFO
 #include <chrono>
@@ -11,7 +10,7 @@
 
 namespace py = pybind11;
 
-void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens_in, const std::array<MyFloat,6> newsubbox)
+void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens_in, const std::array<Float,6> newsubbox)
 {
   py::buffer_info buf_pos = pos_in.request();
   py::buffer_info buf_dens = dens_in.request();
@@ -36,12 +35,12 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens
 
   subbox = newsubbox;
   //Find particles that are inside the (padded) frame
-  MyFloat xmin = BOX_PAD_MIN * subbox[0];
-  MyFloat xmax = BOX_PAD_MAX * subbox[1];
-  MyFloat ymin = BOX_PAD_MIN * subbox[2];
-  MyFloat ymax = BOX_PAD_MAX * subbox[3];
-  MyFloat zmin = BOX_PAD_MIN * subbox[4];
-  MyFloat zmax = BOX_PAD_MAX * subbox[5];
+  Float xmin = BOX_PAD_MIN * subbox[0];
+  Float xmax = BOX_PAD_MAX * subbox[1];
+  Float ymin = BOX_PAD_MIN * subbox[2];
+  Float ymax = BOX_PAD_MAX * subbox[3];
+  Float zmin = BOX_PAD_MIN * subbox[4];
+  Float zmax = BOX_PAD_MAX * subbox[5];
 
   std::vector<size_t> limit_idx;
   limit_idx.reserve(npart_in);
@@ -106,29 +105,20 @@ void PointCloud::buildTree()
 #endif
 }
 
-size_t PointCloud::queryTree(const MyFloat query_pt[3]) const
-{
-  size_t result;
-  MyFloat r2; //
-  tree->knnSearch(&query_pt[0], 1, &result, &r2);
-  return result;
-}
-
-size_t PointCloud::queryTree(const cartarr_t &query_pt) const
+size_t PointCloud::queryTree(const Point &query_pt) const
 {
   //Need native array to pass to knnSearch
-  MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
   size_t result;
-  MyFloat r2; //
-  tree->knnSearch(&query_pt_native[0], 1, &result, &r2);
+  Float r2; //
+  tree->knnSearch(query_pt.data(), 1, &result, &r2);
   return result;
 }
 
-size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id, 
+size_t PointCloud::checkMode(const Point &query_pt, size_t ctree_id, 
                            size_t ntree_id, int *mode) const
 {
   size_t result[8];
-  MyFloat r2[8]; //
+  Float r2[8]; //
   
   // Set mode to initially be 3
   // We want it set to be 
@@ -140,7 +130,7 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
   *mode = 3;
   int i = 1;
 
-  tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
+  tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
   
   if(result[0]==ctree_id)
     *mode -= 2;
@@ -160,7 +150,7 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
         break;
 
       i += 1;
-      tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
+      tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
     }
     else{
       break;
@@ -176,12 +166,4 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
   }
 
   return result[0];
-}
-
-size_t PointCloud::checkMode(const cartarr_t &query_pt, size_t ctree_id, 
-                             size_t ntree_id, int *mode) const
-{
-  //Need native array to pass to knnSearch
-  MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
-  return checkMode(query_pt_native, ctree_id, ntree_id, mode);
 }

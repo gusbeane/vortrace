@@ -12,17 +12,16 @@ namespace py = pybind11;
 class Projection
 {
   private:
-    std::vector<cartarr_t> pts_end;
-    std::vector<cartarr_t> pts_start;
+    std::vector<Point> pts_end;
+    std::vector<Point> pts_start;
     
     size_t ngrid; // Length of pts_start and pts_end.
-    std::vector<MyFloat> dens_proj;
+    std::vector<Float> dens_proj;
 
   public:
-    Projection(py::array_t<MyFloat> pos_start, py::array_t<MyFloat> pos_end);
+    Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end);
 
     void makeProjection(const PointCloud &cloud);
-    void saveProjection(const std::string savename) const;
     py::array_t<double> returnProjection(void) const;
 };
 
