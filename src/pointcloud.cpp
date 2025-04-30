@@ -1,4 +1,3 @@
-
 #include "pointcloud.hpp"
 #ifdef TIMING_INFO
 #include <chrono>
@@ -106,25 +105,16 @@ void PointCloud::buildTree()
 #endif
 }
 
-size_t PointCloud::queryTree(const MyFloat query_pt[3]) const
-{
-  size_t result;
-  MyFloat r2; //
-  tree->knnSearch(&query_pt[0], 1, &result, &r2);
-  return result;
-}
-
 size_t PointCloud::queryTree(const cartarr_t &query_pt) const
 {
   //Need native array to pass to knnSearch
-  MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
   size_t result;
   MyFloat r2; //
-  tree->knnSearch(&query_pt_native[0], 1, &result, &r2);
+  tree->knnSearch(query_pt.data(), 1, &result, &r2);
   return result;
 }
 
-size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id, 
+size_t PointCloud::checkMode(const cartarr_t &query_pt, size_t ctree_id, 
                            size_t ntree_id, int *mode) const
 {
   size_t result[8];
@@ -140,7 +130,7 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
   *mode = 3;
   int i = 1;
 
-  tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
+  tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
   
   if(result[0]==ctree_id)
     *mode -= 2;
@@ -160,7 +150,7 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
         break;
 
       i += 1;
-      tree->knnSearch(&query_pt[0], i+1, &result[0], &r2[0]);
+      tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
     }
     else{
       break;
@@ -176,12 +166,4 @@ size_t PointCloud::checkMode(const MyFloat query_pt[3], size_t ctree_id,
   }
 
   return result[0];
-}
-
-size_t PointCloud::checkMode(const cartarr_t &query_pt, size_t ctree_id, 
-                             size_t ntree_id, int *mode) const
-{
-  //Need native array to pass to knnSearch
-  MyFloat query_pt_native[3] = {query_pt[0], query_pt[1], query_pt[2]};
-  return checkMode(query_pt_native, ctree_id, ntree_id, mode);
 }

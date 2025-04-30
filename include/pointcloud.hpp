@@ -31,10 +31,7 @@ class PointCloud
     void loadPoints(py::array_t<double> pos, py::array_t<double> dens, const std::array<MyFloat,6> newsubbox);
     void buildTree();
 
-    size_t queryTree(const MyFloat query_pt[3]) const;
     size_t queryTree(const cartarr_t &query_pt) const;
-
-    size_t checkMode(const MyFloat query_pt[3], size_t ctree_id, size_t ntree_id, int *mode) const;
     size_t checkMode(const cartarr_t &query_pt, size_t ctree_id, size_t ntree_id, int *mode) const;
 
     //Getters, we need some read-only access to data

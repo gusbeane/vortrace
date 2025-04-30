@@ -54,7 +54,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
     for(size_t j = 0; j < npix_y; j++)
       for(size_t k = 0; k < npix_z; k++)
       {
-        MyFloat query_pt[3];
+        cartarr_t query_pt;
         size_t result_idx;
         query_pt[0] = start_x + deltax * i;
         query_pt[1] = start_y + deltay * j;
