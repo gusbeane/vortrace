@@ -12,7 +12,6 @@ class Ray
 
     Point pos_start;
     Point pos_end;
-    Point dir;
 
     struct RayPoint
     {
@@ -39,6 +38,7 @@ class Ray
     Float dens_col = 0;
 
   public:
+    Point dir;
 
     Ray(const Point &start, const Point &end);
 

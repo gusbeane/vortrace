@@ -42,3 +42,10 @@ jobs:
       - name: Test with pytest
         run: |
           pytest
+      
+      - name: Test with catch2
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
+          ctest --output-on-failure
