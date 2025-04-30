@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install cmake scikit-build pybind11
+          pip install cmake scikit-build pybind11[global]
           pip install .
           pip install pylint pytest h5py
 
