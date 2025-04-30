@@ -22,7 +22,6 @@ class Projection
     Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end);
 
     void makeProjection(const PointCloud &cloud);
-    void saveProjection(const std::string savename) const;
     py::array_t<double> returnProjection(void) const;
 };
 
