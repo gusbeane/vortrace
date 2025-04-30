@@ -62,7 +62,7 @@ target_link_libraries(Cvortrace PRIVATE vortrace_core)
 # add_test(NAME CPPTests COMMAND test_cpp)
 
 # --- C++ unit tests with Catch2 --------------------
-find_package(Catch2 3.5.0 REQUIRED)    # require Catch2 v3.5 or newer
+find_package(Catch2 3.1.0 REQUIRED)    # require Catch2 v3.1 or newer
 
 add_executable(test_cpp
   tests/test_cpp.cpp
