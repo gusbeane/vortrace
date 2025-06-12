@@ -33,3 +33,5 @@ class TestProjection:
         ref_dat = np.load('tests/test_data/galaxy_interaction-proj.npy')
 
         np.testing.assert_array_almost_equal(dat, ref_dat, decimal=14)
+
+        pc.single_projection(np.array([0, 0, 0]), np.array([BoxSize, BoxSize, BoxSize]))

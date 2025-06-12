@@ -29,50 +29,57 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens
     throw std::runtime_error("Input sizes must match");
   }
 
-  size_t npart_in = buf_dens.size;
-
-  std::cout << "Applying bounding box...\n";
-
+  npart = buf_dens.size;
   subbox = newsubbox;
-  //Find particles that are inside the (padded) frame
-  Float xmin = BOX_PAD_MIN * subbox[0];
-  Float xmax = BOX_PAD_MAX * subbox[1];
-  Float ymin = BOX_PAD_MIN * subbox[2];
-  Float ymax = BOX_PAD_MAX * subbox[3];
-  Float zmin = BOX_PAD_MIN * subbox[4];
-  Float zmax = BOX_PAD_MAX * subbox[5];
 
-  std::vector<size_t> limit_idx;
-  limit_idx.reserve(npart_in);
+  std::cout << "Loading pre-filtered points...\n";
 
-  // Apply the bounding box
-  for(size_t i=0; i<npart_in; i++)
-  {
-    if((pos_in_ptr[i*3 + 0] >= xmin) && (pos_in_ptr[i*3 + 0] <= xmax) 
-      && (pos_in_ptr[i*3 + 1] >= ymin) && (pos_in_ptr[i*3 + 1] <= ymax)
-      && (pos_in_ptr[i*3 + 2] >= zmin) && (pos_in_ptr[i*3 + 2] <= zmax)) 
-    {
-      limit_idx.push_back(i);
-    }
-  }
-
-  npart = limit_idx.size();
-
-  // Load selected particles
+  // Load all points directly (they're already filtered in Python)
   pts.resize(npart);
   dens.resize(npart);
-  size_t idx;
+  
   for(size_t i = 0; i < npart; i++) 
   { 
-    idx = limit_idx[i];
-    pts[i][0] = pos_in_ptr[idx*3 + 0];
-    pts[i][1] = pos_in_ptr[idx*3 + 1];
-    pts[i][2] = pos_in_ptr[idx*3 + 2];
-    dens[i] = dens_in_ptr[idx]; 
+    pts[i][0] = pos_in_ptr[i*3 + 0];
+    pts[i][1] = pos_in_ptr[i*3 + 1];
+    pts[i][2] = pos_in_ptr[i*3 + 2];
+    dens[i] = dens_in_ptr[i]; 
+  }
+
+  // Optional: Do a simple validation check that points are roughly within expected bounds
+  // This is just for debugging/validation purposes
+  Float dx = subbox[1] - subbox[0];  // box size in x
+  Float dy = subbox[3] - subbox[2];  // box size in y 
+  Float dz = subbox[5] - subbox[4];  // box size in z
+  
+  Float pad_x = 0.15 * dx;
+  Float pad_y = 0.15 * dy;
+  Float pad_z = 0.15 * dz;
+  
+  Float xmin = subbox[0] - pad_x;
+  Float xmax = subbox[1] + pad_x;
+  Float ymin = subbox[2] - pad_y;
+  Float ymax = subbox[3] + pad_y;
+  Float zmin = subbox[4] - pad_z;
+  Float zmax = subbox[5] + pad_z;
+
+  size_t out_of_bounds = 0;
+  for(size_t i = 0; i < npart; i++) 
+  {
+    if(!(pts[i][0] >= xmin && pts[i][0] <= xmax && 
+         pts[i][1] >= ymin && pts[i][1] <= ymax &&
+         pts[i][2] >= zmin && pts[i][2] <= zmax)) 
+    {
+      out_of_bounds++;
+    }
+  }
+  
+  if(out_of_bounds > 0) 
+  {
+    throw std::runtime_error("Validation failed: " + std::to_string(out_of_bounds) + " points are outside expected bounds. This indicates a bug in Python-side filtering.");
   }
 
   std::cout << "npart: " << npart << "\n";
-
   std::cout << "Snapshot loaded." << std::endl;
 
   tree_built=false;

@@ -1,4 +1,5 @@
 #include "ray.hpp"
+#include <iostream>
 
 Ray::Ray(const Point &start, const Point &end)
 {
@@ -65,7 +66,11 @@ void Ray::integrate(const PointCloud &cloud)
   //If tree_id matches, in same cell already so integrate and stop
   if(pts[0].tree_id == pts[1].tree_id)
     {
-      throw std::runtime_error("Start and end point are in the same cell.");
+      throw std::runtime_error(
+        "Start and end point are in the same cell. "
+        "Start point tree_id: " + std::to_string(pts[0].tree_id) +
+        ", End point tree_id: " + std::to_string(pts[1].tree_id)
+      );
       // ds = pts[1].s - pts[0].s;
       // dens_col = ds * cloud.get_dens(pts[0].tree_id);
       // segments.push_back{{pts[0].tree_id, pts[0].s, ds}};

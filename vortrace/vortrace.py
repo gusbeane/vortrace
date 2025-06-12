@@ -10,7 +10,19 @@ Todo:
 
 """
 
-from .Cvortrace import PointCloud, Projection, Ray
+try:
+    # Preferred: C extension built into vortrace package
+    from .Cvortrace import PointCloud, Projection, Ray  # type: ignore
+except ModuleNotFoundError:
+    # Fallback: the extension was built at the top-level (e.g. via scikit-build-core default)
+    # In that case, try importing it as a top-level module and expose the same names.
+    from importlib import import_module
+
+    _cmod = import_module("Cvortrace")
+    PointCloud = _cmod.PointCloud  # type: ignore
+    Projection = _cmod.Projection  # type: ignore
+    Ray = _cmod.Ray  # type: ignore
+
 from vortrace import grid as gr
 import numpy as np
 
@@ -30,8 +42,9 @@ class ProjectionCloud:
 """
 
     def __init__(self, pos, dens, boundbox=None):
-        self.pos = np.array(pos)
-        self.dens = np.array(dens)
+        # Store original data
+        self.pos_orig = np.array(pos)
+        self.dens_orig = np.array(dens)
 
         if boundbox is None:
             boundbox = [
@@ -40,10 +53,55 @@ class ProjectionCloud:
             ]
 
         self.boundbox = boundbox
+        
+        # Apply bounding box filtering in Python (matching C++ logic)
+        # Pad by 15% of the box size in each dimension
+        dx = boundbox[1] - boundbox[0]  # box size in x
+        dy = boundbox[3] - boundbox[2]  # box size in y
+        dz = boundbox[5] - boundbox[4]  # box size in z
+        
+        pad_x = 0.15 * dx
+        pad_y = 0.15 * dy
+        pad_z = 0.15 * dz
+        
+        xmin = boundbox[0] - pad_x
+        xmax = boundbox[1] + pad_x
+        ymin = boundbox[2] - pad_y
+        ymax = boundbox[3] + pad_y
+        zmin = boundbox[4] - pad_z
+        zmax = boundbox[5] + pad_z
+        
+        # Find particles within the padded bounding box
+        pos_array = np.array(pos)
+        dens_array = np.array(dens)
+        
+        mask = ((pos_array[:, 0] >= xmin) & (pos_array[:, 0] <= xmax) &
+                (pos_array[:, 1] >= ymin) & (pos_array[:, 1] <= ymax) &
+                (pos_array[:, 2] >= zmin) & (pos_array[:, 2] <= zmax))
+        
+        # Apply the mask to filter particles
+        self.pos = pos_array[mask]
+        self.dens = dens_array[mask]
+        
+        print(f"Applied bounding box filter: {len(dens_array)} -> {len(self.dens)} particles")
 
         self._cloud = PointCloud()
-        self._cloud.loadPoints(pos, dens, boundbox)
+        self._cloud.loadPoints(self.pos, self.dens, boundbox)
         self._cloud.buildTree()
+
+    def _prepare_array_for_backend(self, arr):
+        """Converts input to a C-contiguous float64 numpy array if not already.
+
+        Args:
+            arr: The input array-like object.
+
+        Returns:
+            np.ndarray: A C-contiguous, float64 numpy array.
+        """
+        np_arr = np.asarray(arr)
+        if np_arr.dtype != np.float64 or not np_arr.flags['C_CONTIGUOUS']:
+            np_arr = np.ascontiguousarray(np_arr, dtype=np.float64)
+        return np_arr
 
     def grid_projection(self, extent, nres, bounds, center, *, proj=None,
                         yaw=0., pitch=0., roll=0.):
@@ -78,21 +136,14 @@ class ProjectionCloud:
         Returns:
             dat (array of float): The projection data.
         """
-        # ——— enforce numpy arrays ———
-        pos_start = np.asarray(pos_start)
-        pos_end   = np.asarray(pos_end)
-
-        # ——— enforce correct dtype and C‑contiguity ———
-        if pos_start.dtype != np.float64 or not pos_start.flags['C_CONTIGUOUS']:
-            pos_start = np.ascontiguousarray(pos_start, dtype=np.float64)
-        if pos_end.dtype != np.float64 or not pos_end.flags['C_CONTIGUOUS']:
-            pos_end = np.ascontiguousarray(pos_end,   dtype=np.float64)
+        pos_start = self._prepare_array_for_backend(pos_start)
+        pos_end   = self._prepare_array_for_backend(pos_end)
 
         # ——— sanity‐check shape ———
         if pos_start.ndim != 2 or pos_end.ndim != 2 \
-            or pos_start.shape != pos_end.shape:
-            raise ValueError('pos_start / pos_end must be 2D arrays\
-                              of identical shape')
+            or pos_start.shape != pos_end.shape \
+            or pos_start.shape[1] != 3: # Ensure 3 columns for x,y,z
+            raise ValueError('pos_start / pos_end must be 2D arrays of identical shape (N,3)')
 
         # now safe to call into C++
         proj = Projection(pos_start, pos_end)
@@ -103,44 +154,43 @@ class ProjectionCloud:
         """Perform projection for a single ray and return column density and 
         per-segment info.
         Args:
-            pos_start        (array): shape (1,3) start point
-            pos_end          (array): shape (1,3) end point
-            return_mindpoint (bool, optional): if True, return midpoint of each
+            pos_start        (array): shape (3,) or (1,3) start point
+            pos_end          (array): shape (3,) or (1,3) end point
+            return_midpoint (bool, optional): if True, return midpoint of each
                 segment
         Returns:
             dens (float), cell_ids (ndarray), 
             s_vals (ndarray), ds_vals (ndarray)
         """
-        # enforce numpy arrays
-        pos_start = np.asarray(pos_start)
-        pos_end = np.asarray(pos_end)
-        # allow either 1D (3,) or 2D (1,3) inputs
-        if pos_start.ndim == 1 and pos_end.ndim == 1:
-            if pos_start.shape != (3,) or pos_end.shape != (3,):
-                raise ValueError('pos_start and pos_end must have \
-                                 shape (3,) or (1,3)')
-            pos_start = pos_start[np.newaxis, :]
-            pos_end = pos_end[np.newaxis, :]
-        elif pos_start.ndim == 2 and pos_end.ndim == 2:
-            if pos_start.shape != (1,3) or pos_end.shape != (1,3):
-                raise ValueError('pos_start and pos_end must have \
-                                 shape (3,) or (1,3)')
+        # Allow lists/tuples as input, convert to numpy arrays for shape checks
+        pos_start_np = np.asarray(pos_start)
+        pos_end_np = np.asarray(pos_end)
+
+        # Allow either 1D (3,) or 2D (1,3) inputs, and reshape 1D to 2D (1,3)
+        if pos_start_np.ndim == 1 and pos_end_np.ndim == 1:
+            if pos_start_np.shape != (3,) or pos_end_np.shape != (3,):
+                raise ValueError('If 1D, pos_start and pos_end must both have shape (3,)')
+            # Reshape to (1,3) for consistent processing
+            pos_start_np = pos_start_np[np.newaxis, :]
+            pos_end_np = pos_end_np[np.newaxis, :]
+        elif pos_start_np.ndim == 2 and pos_end_np.ndim == 2:
+            if pos_start_np.shape != (1,3) or pos_end_np.shape != (1,3):
+                raise ValueError('If 2D, pos_start and pos_end must both have shape (1,3)')
         else:
-            raise ValueError('pos_start and pos_end must have \
-                             shape (3,) or (1,3)')
+            # Handles cases like one is 1D and other is 2D, or incorrect ndims/shapes
+            raise ValueError('pos_start and pos_end must both be 1D shape (3,) or both 2D shape (1,3)')
 
-        # ——— enforce dtype and contiguity ———
-        if pos_start.dtype != np.float64 or not pos_start.flags['C_CONTIGUOUS']:
-            pos_start = np.ascontiguousarray(pos_start, dtype=np.float64)
-        if pos_end.dtype != np.float64 or not pos_end.flags['C_CONTIGUOUS']:
-            pos_end = np.ascontiguousarray(pos_end, dtype=np.float64)
+        # Now that shape is (1,3), prepare for backend
+        # These will be the arrays passed to the C backend functions or used for extraction
+        pos_start_c = self._prepare_array_for_backend(pos_start_np)
+        pos_end_c   = self._prepare_array_for_backend(pos_end_np)
 
-        # extract single vectors
-        start = pos_start[0]
-        end = pos_end[0]
+        # extract single vectors for Ray constructor (expects 1D (3,) like arrays)
+        start_vec = pos_start_c[0]
+        end_vec = pos_end_c[0]
 
         # compute using Ray
-        ray = Ray(start, end)
+        ray = Ray(start_vec, end_vec)
         ray.integrate(self._cloud)
         dens = ray.get_dens_col()
         segments = ray.get_segments()
