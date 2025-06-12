@@ -35,7 +35,7 @@ target_include_directories(vortrace_core PUBLIC
 )
 target_compile_features(vortrace_core PUBLIC cxx_std_11)
 target_compile_definitions(vortrace_core PRIVATE TIMING_INFO)
-# tell your core library about pybind11’s include dirs:
+# tell your core library about pybind11's include dirs:
 target_link_libraries(vortrace_core
   PUBLIC
     pybind11::headers
@@ -49,7 +49,7 @@ pybind11_add_module(Cvortrace ${SRC_CPP})
 # Build the extension directly into the vortrace package so that
 # `from .Cvortrace import …` just works in‑place.
 set_target_properties(Cvortrace PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/vortrace/vortrace
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/vortrace
 )
 
 target_link_libraries(Cvortrace PRIVATE vortrace_core)
