@@ -1,8 +1,13 @@
+"""Tests for the grid module.
+
+Test cases for the grid generation functions in vortrace.
+"""
 from vortrace import grid as gr
 import numpy as np
 
 
 class TestBaseGrid:
+    """Test class for base grid generation functions."""
 
     def test_simple(self):
         grid0 = gr.generate_base_grid([0, 1], 64)
@@ -25,7 +30,7 @@ class TestBaseGrid:
         assert grid[-1][-1][0] == 63.5 / 64.
         assert grid[0][0][1] == 0.5 / (128. / 3.)
         assert grid[-1][-1][1] == 127.5 / (128 / 3.)
-    
+
     def test_offset(self):
         grid0 = gr.generate_base_grid([3, 4], 64)
         assert grid0.shape == (64, 64, 3)
@@ -38,6 +43,7 @@ class TestBaseGrid:
 
 
 class TestProjectionGrid:
+    """Test class for projection grid generation functions."""
 
     def test_xy(self):
         grid_s, _ = gr.generate_projection_grid([0, 1], 2, [0, 1],
