@@ -84,6 +84,7 @@ class ProjectionCloud:
         # Apply the mask to filter particles
         self.pos = pos_array[mask]
         self.dens = dens_array[mask]
+        self.orig_ids = np.arange(len(dens_array))[mask]
 
         print(f"Applied bounding box filter: {len(dens_array)} -> "
               f"{len(self.dens)} particles")
@@ -260,6 +261,6 @@ class ProjectionCloud:
                              f"{np.sum(self.dens[cell_ids]*ds_vals)}")
 
         if return_midpoint:
-            return dens, cell_ids, smid_vals, ds_vals
+            return dens, self.orig_ids[cell_ids], smid_vals, ds_vals
         else:
-            return dens, cell_ids, s_vals, ds_vals
+            return dens, self.orig_ids[cell_ids], s_vals, ds_vals
