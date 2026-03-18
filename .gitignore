@@ -5,6 +5,7 @@ __pycache__/
 dist/
 
 vorenv/
+venv/
 
 .ipynb_checkpoints/
 
