@@ -9,6 +9,9 @@ endif()
 
 project(vortrace LANGUAGES CXX)
 
+# --- find OpenMP (optional) ---
+find_package(OpenMP)
+
 # find Python
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
@@ -41,6 +44,10 @@ target_link_libraries(vortrace_core
     pybind11::headers
     Python3::Python
 )
+
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(vortrace_core PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 
 # --- build the Python extension ------------------

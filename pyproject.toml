@@ -34,3 +34,8 @@ requires = [
   "pybind11>=2.6.0"
 ]
 build-backend = "scikit_build_core.build"
+
+[tool.pytest.ini_options]
+markers = [
+  "benchmark: performance benchmarks (deselect with '-m \"not benchmark\"')",
+]
