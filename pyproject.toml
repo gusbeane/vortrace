@@ -22,8 +22,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev  = ["h5py","pylint","pytest"]
-test = ["h5py","pylint","pytest"]
+dev  = ["h5py","matplotlib","pylint","pytest"]
+test = ["h5py","matplotlib","pylint","pytest"]
+plot = ["matplotlib"]
 
 [build-system]
 requires = [
