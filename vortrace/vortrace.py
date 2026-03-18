@@ -139,9 +139,9 @@ class ProjectionCloud:
         pos_end = pos_end.reshape(-1, pos_end.shape[-1])
 
         # Actually do the projection using the Cvortrace backend.
-        _proj = Projection(pos_start, pos_end)
-        _proj.makeProjection(self._cloud, reduction_int)
-        dat = _proj.returnProjection()
+        proj_obj = Projection(pos_start, pos_end)
+        proj_obj.makeProjection(self._cloud, reduction_int)
+        dat = proj_obj.returnProjection()
 
         # Reshape before returning.
         if self._nfields == 1:
@@ -179,9 +179,9 @@ class ProjectionCloud:
                              'identical shape (N,3)')
 
         # now safe to call into C++
-        _proj = Projection(pos_start, pos_end)
-        _proj.makeProjection(self._cloud, reduction_int)
-        return _proj.returnProjection()
+        proj_obj = Projection(pos_start, pos_end)
+        proj_obj.makeProjection(self._cloud, reduction_int)
+        return proj_obj.returnProjection()
 
     def single_projection(self, pos_start, pos_end, return_midpoint=True):
         """Perform projection for a single ray and return column density and
