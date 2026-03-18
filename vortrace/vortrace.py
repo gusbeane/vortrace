@@ -264,3 +264,24 @@ class ProjectionCloud:
             return dens, self.orig_ids[cell_ids], smid_vals, ds_vals
         else:
             return dens, self.orig_ids[cell_ids], s_vals, ds_vals
+
+    # ------------------------------------------------------------------
+    # Convenience I/O wrappers
+    # ------------------------------------------------------------------
+
+    def save(self, filename, *, fmt="npz"):
+        """Save this cloud to disk.
+
+        See :func:`vortrace.io.save_cloud` for details.
+        """
+        from vortrace.io import save_cloud
+        save_cloud(filename, self, fmt=fmt)
+
+    @classmethod
+    def load(cls, filename):
+        """Load a cloud from disk.
+
+        See :func:`vortrace.io.load_cloud` for details.
+        """
+        from vortrace.io import load_cloud
+        return load_cloud(filename)
