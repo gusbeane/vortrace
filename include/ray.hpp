@@ -6,6 +6,10 @@
 #include "pointcloud.hpp"
 #include "mytypes.hpp"
 
+#include <limits>
+
+enum class ReductionMode { Sum = 0, Max = 1, Min = 2 };
+
 class Ray
 {
   private:
@@ -35,7 +39,9 @@ class Ray
     std::vector<Segment> segments;
     std::vector<RayPoint> pts;
 
-    Float dens_col = 0;
+    std::vector<Float> col;      // accumulated column values (Sum mode)
+    std::vector<Float> max_val;  // max values along ray
+    std::vector<Float> min_val;  // min values along ray
 
   public:
     Point dir;
@@ -45,10 +51,13 @@ class Ray
     //Find the distance (from pos_start) of the point splitting points idx1 and idx2
     Float findSplitPointDistance(const Point &pos1, const Point &pos2);
 
-    void integrate(const PointCloud &cloud);
+    void integrate(const PointCloud &cloud, ReductionMode mode = ReductionMode::Sum);
 
     //Getters
-    Float get_dens_col() const {return dens_col;}
+    Float get_dens_col() const {return col.empty() ? 0.0 : col[0];}
+    const std::vector<Float>& get_col() const {return col;}
+    const std::vector<Float>& get_max_val() const {return max_val;}
+    const std::vector<Float>& get_min_val() const {return min_val;}
     const std::vector<Segment>& get_segments() const {return segments;}
 
 };
