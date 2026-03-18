@@ -1,9 +1,11 @@
 """Smoke tests for vortrace.plot functions."""
 
 import numpy as np
-import matplotlib
+import pytest
+
+matplotlib = pytest.importorskip("matplotlib")
 matplotlib.use("Agg")
-import pytest  # noqa: E402
+
 from vortrace import plot  # noqa: E402
 
 
