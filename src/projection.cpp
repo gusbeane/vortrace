@@ -1,6 +1,5 @@
 
 #include "projection.hpp"
-#include "ray.hpp"
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -20,11 +19,11 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
   Float *pos_start_ptr = (Float *) buf_pos_start.ptr,
           *pos_end_ptr = (Float *) buf_pos_end.ptr;
-  
+
   // Check to ensure they have the correct dimensions
   if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)
     throw std::runtime_error("PROJECTION: pos_start and pos_end array must both be two-dimensional\n");
-  
+
   // Check to ensure they have the same number of particles.
   if (buf_pos_start.size != buf_pos_end.size)
   {
@@ -34,6 +33,7 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
   // Allocate and load in arrrays.
   ngrid = buf_pos_start.size/3;
+  nfields = 0;  // will be set in makeProjection from cloud
 
   pts_start.resize(ngrid);
   pts_end.resize(ngrid);
@@ -49,7 +49,7 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
 }
 
-void Projection::makeProjection(const PointCloud &cloud)
+void Projection::makeProjection(const PointCloud &cloud, int reduction)
 {
 
   if(!cloud.get_tree_built())
@@ -59,10 +59,13 @@ void Projection::makeProjection(const PointCloud &cloud)
     return;
   }
 
+  nfields = cloud.get_nfields();
+  ReductionMode mode = static_cast<ReductionMode>(reduction);
+
   //resize and zero result vector(s)
-  dens_proj.resize(ngrid);
-  memset(&dens_proj[0], 0.0, dens_proj.size() * sizeof dens_proj[0]);
-  
+  proj_data.resize(ngrid * nfields);
+  memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+
   std::cout << "Making projection...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
@@ -71,8 +74,17 @@ void Projection::makeProjection(const PointCloud &cloud)
   for(size_t i = 0; i < ngrid; i++)
   {
         Ray projray(pts_start[i], pts_end[i]);
-        projray.integrate(cloud);
-        dens_proj[i] = projray.get_dens_col();
+        projray.integrate(cloud, mode);
+
+        const std::vector<Float> *src;
+        switch (mode) {
+          case ReductionMode::Max: src = &projray.get_max_val(); break;
+          case ReductionMode::Min: src = &projray.get_min_val(); break;
+          default:                 src = &projray.get_col();     break;
+        }
+
+        for(size_t f = 0; f < nfields; f++)
+          proj_data[i * nfields + f] = (*src)[f];
   }
 
 #ifdef TIMING_INFO
@@ -86,26 +98,33 @@ void Projection::makeProjection(const PointCloud &cloud)
 
 py::array_t<double> Projection::returnProjection(void) const
 {
-  // std::cout << "Saving projection to " << savename << "...   ";
-  //First check if slice has been made
-  if(dens_proj.empty())
+  //First check if projection has been made
+  if(proj_data.empty())
   {
     std::cout << "Projection has not yet been made. Aborting." << std::endl;
     exit(1);
   }
 
-  // std::ofstream myfile(savename, std::ios::trunc);
-  // if (myfile.is_open())
-  // {
-  auto result = py::array_t<double>(dens_proj.size());
-  py::buffer_info buf = result.request();
-  double *result_ptr = static_cast<double *>(buf.ptr);
-
-  for(size_t i = 0; i < dens_proj.size(); i++){
-    result_ptr[i] = dens_proj[i];
+  if(nfields == 1)
+  {
+    // Backward compatible: return 1D array (ngrid,)
+    auto result = py::array_t<double>(ngrid);
+    py::buffer_info buf = result.request();
+    double *result_ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid; i++)
+      result_ptr[i] = proj_data[i];
+    return result;
   }
-
-  return result;
+  else
+  {
+    // Return 2D array (ngrid, nfields)
+    auto result = py::array_t<double>({(ssize_t)ngrid, (ssize_t)nfields});
+    py::buffer_info buf = result.request();
+    double *result_ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid * nfields; i++)
+      result_ptr[i] = proj_data[i];
+    return result;
+  }
 }
 
 

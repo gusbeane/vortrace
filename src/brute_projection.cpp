@@ -3,11 +3,13 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <algorithm>
+#include <limits>
 #ifdef TIMING_INFO
 #include <chrono>
 #endif
 
-void BruteProjection::makeProjection(const PointCloud &cloud)
+void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
 {
 
   if(!cloud.get_tree_built())
@@ -19,7 +21,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
 
   //First check extent is in point cloud bounds
   std::array<Float,6> subbox = cloud.get_subbox();
-  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
+  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) ||
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (extent[4] < subbox[4]) || (extent[5] > subbox[5]))
   {
@@ -27,6 +29,9 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
     std::cout << "Aborting projection production." << std::endl;
     return;
   }
+
+  nfields = cloud.get_nfields();
+  ReductionMode mode = static_cast<ReductionMode>(reduction);
 
   //Pull out some elements in case of omp slowdown issues
   //Likely unnecessary, compiler should take care of it
@@ -38,13 +43,21 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
   Float start_z = extent[4];
 
   Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
+  Float deltay = (extent[3] - extent[2]) / (npix_y - 1);
   Float deltaz = (extent[5] - extent[4]) / (npix_z - 1);
 
-  //resize and zero result vector(s)
-  dens_proj.resize(npix_x * npix_y);
-  memset(&dens_proj[0], 0, dens_proj.size() * sizeof dens_proj[0]);
-  
+  size_t ngrid = npix_x * npix_y;
+
+  //resize and zero/init result vector(s)
+  proj_data.resize(ngrid * nfields);
+  if (mode == ReductionMode::Sum) {
+    memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+  } else if (mode == ReductionMode::Max) {
+    std::fill(proj_data.begin(), proj_data.end(), -std::numeric_limits<Float>::infinity());
+  } else {
+    std::fill(proj_data.begin(), proj_data.end(), std::numeric_limits<Float>::infinity());
+  }
+
   std::cout << "Making projection...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
@@ -60,12 +73,29 @@ void BruteProjection::makeProjection(const PointCloud &cloud)
         query_pt[1] = start_y + deltay * j;
         query_pt[2] = start_z + deltaz * k;
         result_idx = cloud.queryTree(query_pt);
-        dens_proj[i * npix_y + j] += cloud.get_dens(result_idx);
+        size_t base = (i * npix_y + j) * nfields;
+        for(size_t f = 0; f < nfields; f++) {
+          Float val = cloud.get_field(result_idx, f);
+          switch (mode) {
+            case ReductionMode::Sum:
+              proj_data[base + f] += val;
+              break;
+            case ReductionMode::Max:
+              if (val > proj_data[base + f]) proj_data[base + f] = val;
+              break;
+            case ReductionMode::Min:
+              if (val < proj_data[base + f]) proj_data[base + f] = val;
+              break;
+          }
+        }
       }
 
-  #pragma omp parallel for schedule(dynamic,256)
-  for(size_t i = 0; i < dens_proj.size(); i++)
-    dens_proj[i] *= deltaz;
+  // Scale by deltaz for Sum mode only
+  if (mode == ReductionMode::Sum) {
+    #pragma omp parallel for schedule(dynamic,256)
+    for(size_t i = 0; i < proj_data.size(); i++)
+      proj_data[i] *= deltaz;
+  }
 
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
@@ -79,7 +109,7 @@ void BruteProjection::saveProjection(const std::string savename) const
 {
   std::cout << "Saving projection to " << savename << "...   ";
   //First check if slice has been made
-  if(dens_proj.empty())
+  if(proj_data.empty())
   {
     std::cout << "Projection has not yet been made. Aborting save." << std::endl;
     return;
@@ -88,8 +118,8 @@ void BruteProjection::saveProjection(const std::string savename) const
   std::ofstream myfile(savename, std::ios::trunc);
   if (myfile.is_open())
   {
-    for(size_t i = 0; i < dens_proj.size(); i++)
-      myfile << dens_proj[i] << "\n";
+    for(size_t i = 0; i < proj_data.size(); i++)
+      myfile << proj_data[i] << "\n";
 
     myfile.close();
     std::cout << "Done." << std::endl;
