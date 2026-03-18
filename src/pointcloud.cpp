@@ -10,40 +10,51 @@
 
 namespace py = pybind11;
 
-void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> dens_in, const std::array<Float,6> newsubbox)
+void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fields_in, const std::array<Float,6> newsubbox)
 {
   py::buffer_info buf_pos = pos_in.request();
-  py::buffer_info buf_dens = dens_in.request();
+  py::buffer_info buf_fields = fields_in.request();
 
   double *pos_in_ptr = (double *) buf_pos.ptr,
-         *dens_in_ptr = (double *) buf_dens.ptr;
+         *fields_in_ptr = (double *) buf_fields.ptr;
 
-  // Check to ensure pos and dens have the correct dimensions
-  if (buf_pos.ndim != 2 || buf_dens.ndim != 1)
-    throw std::runtime_error("pos array must be two-dimensional and dens array must be one-dimensional");
-  
+  // Check to ensure pos has correct dimensions
+  if (buf_pos.ndim != 2)
+    throw std::runtime_error("pos array must be two-dimensional");
+
+  // fields_in can be 1D (npart,) or 2D (npart, nfields)
+  if (buf_fields.ndim == 1) {
+    nfields = 1;
+    npart = buf_fields.shape[0];
+  } else if (buf_fields.ndim == 2) {
+    nfields = buf_fields.shape[1];
+    npart = buf_fields.shape[0];
+  } else {
+    throw std::runtime_error("fields array must be one-dimensional or two-dimensional");
+  }
+
   // Check to ensure they have the same number of particles.
-  if (buf_pos.size != 3 * buf_dens.size)
+  if (buf_pos.shape[0] != (ssize_t)npart)
   {
-    std::cout << "buf_pos.size=" << buf_pos.size << "buf_dens.size=" << buf_dens.size <<"\n";
+    std::cout << "buf_pos.shape[0]=" << buf_pos.shape[0] << " npart=" << npart <<"\n";
     throw std::runtime_error("Input sizes must match");
   }
 
-  npart = buf_dens.size;
   subbox = newsubbox;
 
   std::cout << "Loading pre-filtered points...\n";
 
   // Load all points directly (they're already filtered in Python)
   pts.resize(npart);
-  dens.resize(npart);
-  
-  for(size_t i = 0; i < npart; i++) 
-  { 
+  fields.resize(npart * nfields);
+
+  for(size_t i = 0; i < npart; i++)
+  {
     pts[i][0] = pos_in_ptr[i*3 + 0];
     pts[i][1] = pos_in_ptr[i*3 + 1];
     pts[i][2] = pos_in_ptr[i*3 + 2];
-    dens[i] = dens_in_ptr[i]; 
+    for(size_t f = 0; f < nfields; f++)
+      fields[i * nfields + f] = fields_in_ptr[i * nfields + f];
   }
 
   // Optional: Do a simple validation check that points are roughly within expected bounds
