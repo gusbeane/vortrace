@@ -67,7 +67,7 @@ void Projection::makeProjection(const PointCloud &cloud)
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
-  #pragma omp parallel for schedule(dynamic,256) collapse(2)
+  #pragma omp parallel for schedule(dynamic,256)
   for(size_t i = 0; i < ngrid; i++)
   {
         Ray projray(pts_start[i], pts_end[i]);
