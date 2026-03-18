@@ -2,6 +2,7 @@
 #define BRUTE_PROJ_HPP
 
 #include "pointcloud.hpp"
+#include "ray.hpp"
 #include "mytypes.hpp"
 
 class BruteProjection
@@ -10,13 +11,14 @@ class BruteProjection
     std::array<size_t,3> npix;
     std::array<Float,6> extent;
 
-    std::vector<Float> dens_proj;
+    size_t nfields;
+    std::vector<Float> proj_data;  // flat, (npix_x * npix_y) * nfields
 
   public:
-    BruteProjection(std::array<size_t,3> npix, std::array<Float,6> extent) : 
-      npix(npix), extent(extent) {}
+    BruteProjection(std::array<size_t,3> npix, std::array<Float,6> extent) :
+      npix(npix), extent(extent), nfields(0) {}
 
-    void makeProjection(const PointCloud &cloud);
+    void makeProjection(const PointCloud &cloud, int reduction = 0);
     void saveProjection(const std::string savename) const;
 
 };

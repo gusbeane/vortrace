@@ -46,7 +46,7 @@ Float Ray::findSplitPointDistance(const Point &pos1, const Point &pos2)
 
 }
 
-void Ray::integrate(const PointCloud &cloud)
+void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
 {
   size_t current, next;
   size_t ctree_id, ntree_id, stree_id;
@@ -54,9 +54,32 @@ void Ray::integrate(const PointCloud &cloud)
   Point pos;
   int mode;
 
-  dens_col = 0.0;
+  size_t nf = cloud.get_nfields();
+
+  col.assign(nf, 0.0);
+  max_val.assign(nf, -std::numeric_limits<Float>::infinity());
+  min_val.assign(nf, std::numeric_limits<Float>::infinity());
+
   segments.clear();
   // dynamic doubling: initial reserve done in constructor, further doubling handled automatically
+
+  // Helper lambda to accumulate a segment for all fields
+  auto accumulate = [&](size_t cell_id, Float seg_ds) {
+    for (size_t f = 0; f < nf; f++) {
+      Float val = cloud.get_field(cell_id, f);
+      switch (reduction) {
+        case ReductionMode::Sum:
+          col[f] += seg_ds * val;
+          break;
+        case ReductionMode::Max:
+          if (val > max_val[f]) max_val[f] = val;
+          break;
+        case ReductionMode::Min:
+          if (val < min_val[f]) min_val[f] = val;
+          break;
+      }
+    }
+  };
 
   //Find nearest neighbour for start and end ray points
 
@@ -71,10 +94,6 @@ void Ray::integrate(const PointCloud &cloud)
         "Start point tree_id: " + std::to_string(pts[0].tree_id) +
         ", End point tree_id: " + std::to_string(pts[1].tree_id)
       );
-      // ds = pts[1].s - pts[0].s;
-      // dens_col = ds * cloud.get_dens(pts[0].tree_id);
-      // segments.push_back{{pts[0].tree_id, pts[0].s, ds}};
-      // return;
     }
 
   //Otherwise start integration
@@ -94,33 +113,33 @@ void Ray::integrate(const PointCloud &cloud)
     pos[0] = pos_start[0] + s * dir[0];
     pos[1] = pos_start[1] + s * dir[1];
     pos[2] = pos_start[2] + s * dir[2];
-    
+
     //Neighbour search for this position
     stree_id = cloud.checkMode(pos, ctree_id, ntree_id, &mode);
-    
+
     // mode has the following values:
     //   0: if we are on an edge between ctree_id and ntree_id
     //   1: if we are on an edge between ctree_id and another cell(s)
     //   2: if we are on an edge between ntree_id and another cell(s)
     //   3: if we are not on an edge between either ctree_id and ntree_id
-    
+
     switch(mode) {
       case 0:
         // pts[*].s gives the position along the ray to the mesh generating point
         // s gives the position along the ray to the edge between cells
         ds = s - pts[current].s;
-        dens_col += ds * cloud.get_dens(ctree_id);
+        accumulate(ctree_id, ds);
         segments.push_back({ ctree_id, pts[current].s, s, ds });
 
         ds = pts[next].s - s;
-        dens_col += ds * cloud.get_dens(ntree_id);
+        accumulate(ntree_id, ds);
         segments.push_back({ ntree_id, pts[next].s, s, ds });
-        
+
         //Move on
         current = pts[current].next;
         ctree_id = pts[current].tree_id;
         next = pts[current].next;
-        
+
         //Check to see if we reached the end
         if(next == SIZE_MAX)
           not_done = 0;

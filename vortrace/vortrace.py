@@ -43,10 +43,21 @@ class ProjectionCloud:
 
     """
 
+    _REDUCTION_MAP = {'integrate': 0, 'sum': 0, 'max': 1, 'min': 2}
+
     def __init__(self, pos, dens, boundbox=None):
         # Store original data
         self.pos_orig = np.array(pos)
         self.dens_orig = np.array(dens)
+
+        dens_array = np.array(dens)
+        # Determine number of fields
+        if dens_array.ndim == 1:
+            self._nfields = 1
+        elif dens_array.ndim == 2:
+            self._nfields = dens_array.shape[1]
+        else:
+            raise ValueError("dens must be 1D (npart,) or 2D (npart, nfields)")
 
         if boundbox is None:
             boundbox = [
@@ -75,19 +86,20 @@ class ProjectionCloud:
 
         # Find particles within the padded bounding box
         pos_array = np.array(pos)
-        dens_array = np.array(dens)
 
         mask = ((pos_array[:, 0] >= xmin) & (pos_array[:, 0] <= xmax) &
                 (pos_array[:, 1] >= ymin) & (pos_array[:, 1] <= ymax) &
                 (pos_array[:, 2] >= zmin) & (pos_array[:, 2] <= zmax))
 
+        npart_orig = dens_array.shape[0]
+
         # Apply the mask to filter particles
         self.pos = pos_array[mask]
         self.dens = dens_array[mask]
-        self.orig_ids = np.arange(len(dens_array))[mask]
+        self.orig_ids = np.arange(npart_orig)[mask]
 
-        print(f"Applied bounding box filter: {len(dens_array)} -> "
-              f"{len(self.dens)} particles")
+        print(f"Applied bounding box filter: {npart_orig} -> "
+              f"{self.dens.shape[0]} particles")
 
         self._cloud = PointCloud()
         self._cloud.loadPoints(self.pos, self.dens, boundbox)
@@ -108,7 +120,13 @@ class ProjectionCloud:
         return np_arr
 
     def grid_projection(self, extent, nres, bounds, center, *, proj=None,
-                        yaw=0., pitch=0., roll=0.):
+                        yaw=0., pitch=0., roll=0., reduction='integrate'):
+
+        reduction_int = self._REDUCTION_MAP.get(reduction)
+        if reduction_int is None:
+            raise ValueError(
+                f"Unknown reduction {reduction!r}. "
+                f"Use one of {list(self._REDUCTION_MAP)}")
 
         pos_start, pos_end = gr.generate_projection_grid(extent, nres, bounds,
                                                          center, proj=proj,
@@ -116,30 +134,40 @@ class ProjectionCloud:
                                                          roll=roll)
 
         # Flatten before feeding into backend.
-        # TODO: make C backend accept arbitrary shape?
         orig_shape = pos_start.shape
         pos_start = pos_start.reshape(-1, pos_start.shape[-1])
         pos_end = pos_end.reshape(-1, pos_end.shape[-1])
 
-        # Actually do the projection using the Cvortrace bakend.
-        proj = Projection(pos_start, pos_end)
-        proj.makeProjection(self._cloud)
-        dat = proj.returnProjection()
+        # Actually do the projection using the Cvortrace backend.
+        proj_obj = Projection(pos_start, pos_end)
+        proj_obj.makeProjection(self._cloud, reduction_int)
+        dat = proj_obj.returnProjection()
 
         # Reshape before returning.
-        dat = np.reshape(dat, orig_shape[:-1])
+        if self._nfields == 1:
+            dat = np.reshape(dat, orig_shape[:-1])
+        else:
+            dat = np.reshape(dat, (*orig_shape[:-1], self._nfields))
         return dat
 
-    def projection(self, pos_start, pos_end):
+    def projection(self, pos_start, pos_end, *, reduction='integrate'):
         """Make a projection through the point cloud.
 
         Args:
             pos_start (array of float): Starting points of the projection.
             pos_end (array of float): Ending points of the projection.
+            reduction (str): Reduction mode: 'integrate'/'sum', 'max', 'min'.
 
         Returns:
-            dat (array of float): The projection data.
+            dat (array of float): The projection data. Shape ``(N,)`` when
+                a single field was loaded, ``(N, nfields)`` otherwise.
         """
+        reduction_int = self._REDUCTION_MAP.get(reduction)
+        if reduction_int is None:
+            raise ValueError(
+                f"Unknown reduction {reduction!r}. "
+                f"Use one of {list(self._REDUCTION_MAP)}")
+
         pos_start = self._prepare_array_for_backend(pos_start)
         pos_end = self._prepare_array_for_backend(pos_end)
 
@@ -151,9 +179,9 @@ class ProjectionCloud:
                              'identical shape (N,3)')
 
         # now safe to call into C++
-        proj = Projection(pos_start, pos_end)
-        proj.makeProjection(self._cloud)
-        return proj.returnProjection()
+        proj_obj = Projection(pos_start, pos_end)
+        proj_obj.makeProjection(self._cloud, reduction_int)
+        return proj_obj.returnProjection()
 
     def single_projection(self, pos_start, pos_end, return_midpoint=True):
         """Perform projection for a single ray and return column density and
@@ -164,8 +192,11 @@ class ProjectionCloud:
             return_midpoint (bool, optional): if True, return midpoint of each
                 segment
         Returns:
-            dens (float), cell_ids (ndarray),
+            dens (float or ndarray), cell_ids (ndarray),
             s_vals (ndarray), ds_vals (ndarray)
+
+        When ``nfields == 1``, *dens* is a scalar (backward compatible).
+        When ``nfields > 1``, *dens* is a 1-D array of length *nfields*.
         """
         # Allow lists/tuples as input, convert to numpy arrays for shape checks
         pos_start_np = np.asarray(pos_start)
@@ -190,8 +221,6 @@ class ProjectionCloud:
                              '(3,) or both 2D shape (1,3)')
 
         # Now that shape is (1,3), prepare for backend
-        # These will be the arrays passed to the C backend functions or used
-        # for extraction
         pos_start_c = self._prepare_array_for_backend(pos_start_np)
         pos_end_c = self._prepare_array_for_backend(pos_end_np)
 
@@ -203,7 +232,8 @@ class ProjectionCloud:
         # compute using Ray
         ray = Ray(start_vec, end_vec)
         ray.integrate(self._cloud)
-        dens = ray.get_dens_col()
+
+        col_vals = np.array(ray.get_col())  # length nfields
         segments = ray.get_segments()
 
         # unpack segment info into arrays
@@ -255,15 +285,27 @@ class ProjectionCloud:
         else:
             raise ValueError('pos_start and pos_end are in the same cell')
 
-        if not np.isclose(dens, np.sum(self.dens[cell_ids]*ds_vals)):
+        # Validation: check that column values are consistent with segments
+        if self._nfields == 1:
+            # scalar dens for backward compat
+            dens_field = self.dens[cell_ids]
+        else:
+            # dens is 2D: (npart, nfields); index first field for validation
+            dens_field = self.dens[cell_ids, 0]
+
+        if not np.isclose(col_vals[0],
+                          np.sum(dens_field * ds_vals)):
             raise ValueError(f"extracted ray cells and ds does not give "
-                             f"consistent density: {dens} != "
-                             f"{np.sum(self.dens[cell_ids]*ds_vals)}")
+                             f"consistent density: {col_vals[0]} != "
+                             f"{np.sum(dens_field * ds_vals)}")
+
+        # Return scalar dens for backward compat when nfields == 1
+        dens_out = col_vals[0] if self._nfields == 1 else col_vals
 
         if return_midpoint:
-            return dens, self.orig_ids[cell_ids], smid_vals, ds_vals
+            return dens_out, self.orig_ids[cell_ids], smid_vals, ds_vals
         else:
-            return dens, self.orig_ids[cell_ids], s_vals, ds_vals
+            return dens_out, self.orig_ids[cell_ids], s_vals, ds_vals
 
     # ------------------------------------------------------------------
     # Convenience I/O wrappers

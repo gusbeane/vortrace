@@ -17,9 +17,10 @@ class PointCloud
 {
   private:
     size_t npart = 0;
+    size_t nfields = 1;
     std::array<Float,6> subbox;
     std::vector<Point> pts;
-    std::vector<Float> dens;
+    std::vector<Float> fields;  // flat, particle-major: fields[idx * nfields + f]
 
     bool tree_built = false;
     std::unique_ptr<my_kd_tree_t> tree;
@@ -27,8 +28,8 @@ class PointCloud
   public:
 
     //Load gas from snapshot, applying subbox {xmin,xmax,ymin,ymax,zmin,zmax}
-    //and build tree
-    void loadPoints(py::array_t<double> pos, py::array_t<double> dens, const std::array<Float,6> newsubbox);
+    //and build tree.  fields_in can be 1D (npart,) or 2D (npart, nfields).
+    void loadPoints(py::array_t<double> pos, py::array_t<double> fields_in, const std::array<Float,6> newsubbox);
     void buildTree();
 
     size_t queryTree(const Point &query_pt) const;
@@ -38,7 +39,9 @@ class PointCloud
     std::array<Float,6> get_subbox() const {return subbox;}
     bool get_tree_built() const {return tree_built;}
     Point get_pt(const size_t idx) const {return pts[idx];}
-    Float get_dens(const size_t idx) const {return dens[idx];}
+    Float get_field(const size_t idx, const size_t f) const {return fields[idx * nfields + f];}
+    Float get_dens(const size_t idx) const {return get_field(idx, 0);}
+    size_t get_nfields() const {return nfields;}
 
     //Required methods for nanoflann adaptor.
     inline size_t kdtree_get_point_count() const { return npart;}
