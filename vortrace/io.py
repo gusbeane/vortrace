@@ -156,7 +156,7 @@ def save_cloud(filename, cloud, *, fmt="npz"):
 
 
 def load_cloud(filename):
-    """Load a :class:`~vortrace.vortrace.ProjectionCloud` saved by :func:`save_cloud`.
+    """Load a ProjectionCloud saved by :func:`save_cloud`.
 
     The KD-tree is rebuilt automatically during construction.
 
