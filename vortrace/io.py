@@ -142,8 +142,13 @@ def save_cloud(filename, cloud, *, fmt="npz"):
     fields = np.asarray(cloud.fields_orig)
     boundbox = np.asarray(cloud.boundbox)
 
+    periodic = getattr(cloud, "periodic", False)
+    filter_flag = getattr(cloud, "filter", True)
+
     if fmt == "npz":
-        arrays = {"pos": pos, "fields": fields, "boundbox": boundbox}
+        arrays = {"pos": pos, "fields": fields, "boundbox": boundbox,
+                  "periodic": np.array(periodic),
+                  "filter": np.array(filter_flag)}
         if cloud.vol_orig is not None:
             arrays["vol"] = np.asarray(cloud.vol_orig)
         np.savez(filename, **arrays)
@@ -154,6 +159,8 @@ def save_cloud(filename, cloud, *, fmt="npz"):
             f.create_dataset("pos", data=pos)
             f.create_dataset("fields", data=fields)
             f.attrs["boundbox"] = boundbox
+            f.attrs["periodic"] = periodic
+            f.attrs["filter"] = filter_flag
             if cloud.vol_orig is not None:
                 f.create_dataset("vol", data=np.asarray(cloud.vol_orig))
     else:
@@ -185,6 +192,8 @@ def load_cloud(filename):
             fields = npz["fields"]
             boundbox = npz["boundbox"]
             vol = npz["vol"] if "vol" in npz else None
+            periodic = bool(npz["periodic"]) if "periodic" in npz else False
+            filter_flag = bool(npz["filter"]) if "filter" in npz else True
     else:
         h5py = _import_h5py()
         with h5py.File(filename, "r") as f:
@@ -192,6 +201,12 @@ def load_cloud(filename):
             fields = f["fields"][:]
             boundbox = f.attrs["boundbox"]
             vol = f["vol"][:] if "vol" in f else None
+            periodic = (bool(f.attrs["periodic"])
+                        if "periodic" in f.attrs else False)
+            filter_flag = (bool(f.attrs["filter"])
+                           if "filter" in f.attrs
+                           else True)
 
     return ProjectionCloud(pos, fields, boundbox=list(boundbox),
-                           vol=vol)
+                           vol=vol, periodic=periodic,
+                           filter=filter_flag)

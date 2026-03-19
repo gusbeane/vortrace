@@ -29,3 +29,23 @@ for efficient nearest-neighbour searches.  Then:
 
 This recursive splitting ensures that the number of kDTree queries scales
 with the number of cell crossings, not with a fixed sampling resolution.
+
+Periodic boundary conditions
+----------------------------
+
+``vortrace`` supports periodic boundary conditions with the ``periodic=True`` 
+flag on :class:`~vortrace.ProjectionCloud`.
+
+Periodic nearest-neighbour queries use a **ghost-image** approach.  When the
+kDTree is queried for the nearest neighbour of a point **q**, the algorithm:
+
+1. Queries the tree with the original point **q** and records the result.
+2. For each of the 26 non-trivial shifts ``(dx, dy, dz)`` in ``{-1, 0, 1}^3``,
+   it shifts **q** by ``(dx * Lx, dy * Ly, dz * Lz)`` (where *L* is the box
+   size in each dimension) and queries the tree again.
+3. Returns the closest result across all images.
+
+An early-exit optimisation makes this efficient: an image is skipped if the
+query point is farther from the relevant boundary than the current best
+distance.  In practice, most queries only perform a single tree search; only
+points near a box face trigger additional searches.

@@ -22,8 +22,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev  = ["h5py","matplotlib","pylint","pytest"]
-test = ["h5py","matplotlib","pylint","pytest"]
+dev  = ["h5py","matplotlib","pylint","pytest","scipy"]
+test = ["h5py","matplotlib","pylint","pytest","scipy"]
 plot = ["matplotlib"]
 docs = ["sphinx>=7.0", "furo", "nbsphinx", "ipykernel", "pypandoc_binary"]
 
