@@ -23,7 +23,8 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def(py::init<>())
         .def("loadPoints", &PointCloud::loadPoints,
              py::arg("pos"), py::arg("fields_in"),
-             py::arg("subbox"), py::arg("vol") = py::array_t<double>())
+             py::arg("subbox"), py::arg("vol") = py::array_t<double>(),
+             py::arg("periodic") = false, py::arg("filter") = true)
         .def("buildTree", &PointCloud::buildTree)
         .def("get_nfields", &PointCloud::get_nfields)
         .def("get_pt", &PointCloud::get_pt)
@@ -32,7 +33,9 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def("get_tree_built", &PointCloud::get_tree_built)
         .def("get_orig_ids", &PointCloud::get_orig_ids)
         .def("get_pad", &PointCloud::get_pad)
-        .def("get_npart", &PointCloud::get_npart);
+        .def("get_npart", &PointCloud::get_npart)
+        .def("get_periodic", &PointCloud::get_periodic)
+        .def("queryTree", &PointCloud::queryTree);
 
     py::class_<Projection>(m, "Projection")
         .def(py::init<
