@@ -1,13 +1,8 @@
-"""Basic grid module.
+"""Grid generation utilities for vortrace projections.
 
-Collection of basic grid generation and manipulation routines.
-
-Example:
-    Example placeholders.
-
-Todo:
-    * Add examples.
-
+Provides routines for building start/end point grids used by
+:class:`~vortrace.ProjectionCloud.grid_projection`, including
+Tait-Bryan rotation support and numba-accelerated grid construction.
 """
 
 import numpy as np

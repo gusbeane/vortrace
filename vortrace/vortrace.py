@@ -1,13 +1,8 @@
-"""Main vortrace functions.
+"""High-level interface for projections through Voronoi meshes.
 
-Main entry point into vortrace functions.
-
-Example:
-    Example placeholders.
-
-Todo:
-    * Add examples.
-
+Provides :class:`ProjectionCloud`, the main user-facing class that wraps
+the C++ backend for grid projections, direct ray projections, and
+single-ray segment queries.
 """
 
 import logging
@@ -23,17 +18,11 @@ _log = logging.getLogger("vortrace")
 
 
 class ProjectionCloud:
-    """Object for making projections through Voronoi mesh.
+    """Main interface for projections through an unstructured Voronoi mesh.
 
-    Organizes simple wrappers around the underlying Cvortrace package, which
-    does all the heavy lifting.
-
-    Example:
-        Example placeholders.
-
-    Todo:
-        * Add examples.
-
+    Wraps the C++ ``Cvortrace`` backend to provide grid-based projections,
+    arbitrary ray projections, and single-ray segment queries.  Supports
+    multiple fields and reduction modes (sum/integrate, max, min).
     """
 
     _REDUCTION_MAP = {
@@ -45,6 +34,29 @@ class ProjectionCloud:
 
     def __init__(self, pos, fields, boundbox=None, vol=None, *,
                  periodic=False, filter=True):  # pylint: disable=redefined-builtin
+        """Create a ProjectionCloud from particle data.
+
+        Parameters
+        ----------
+        pos : array_like, shape (N, 3)
+            Particle positions.
+        fields : array_like, shape (N,) or (N, nfields)
+            Scalar field(s) to integrate (e.g. density).
+        boundbox : list of float, optional
+            Bounding box ``[xmin, xmax, ymin, ymax, zmin, zmax]``.
+            If *None*, derived from *pos*.
+        vol : array_like of shape (N,), optional
+            Cell volumes.  When provided, the C++ backend uses them
+            for adaptive padding of the kDTree search radius.
+        periodic : bool, optional
+            If *True*, use periodic boundary conditions.  The
+            bounding box is treated as the periodic domain and
+            nearest-neighbor queries wrap across boundaries.
+        filter : bool, optional
+            If *True* (default), particles outside the padded
+            bounding box are discarded.  Ignored when
+            *periodic=True* (all particles are kept).
+        """
         # Store original data
         self.pos_orig = np.array(pos)
         self.fields_orig = np.array(fields)
@@ -187,17 +199,17 @@ class ProjectionCloud:
     def single_projection(self, pos_start, pos_end, return_midpoint=True):
         """Perform projection for a single ray and return column density and
         per-segment info.
-        Args:
-            pos_start        (array): shape (3,) or (1,3) start point
-            pos_end          (array): shape (3,) or (1,3) end point
-            return_midpoint (bool, optional): if True, return midpoint of each
-                segment
-        Returns:
-            dens (float or ndarray), cell_ids (ndarray),
-            s_vals (ndarray), ds_vals (ndarray)
 
-        When ``nfields == 1``, *dens* is a scalar (backward compatible).
-        When ``nfields > 1``, *dens* is a 1-D array of length *nfields*.
+        Args:
+            pos_start (array): shape (3,) or (1,3) start point.
+            pos_end (array): shape (3,) or (1,3) end point.
+            return_midpoint (bool, optional): if True, return midpoint of
+                each segment.
+
+        Returns:
+            tuple: ``(dens, cell_ids, s_vals, ds_vals)``.
+            When ``nfields == 1``, *dens* is a scalar (backward compatible).
+            When ``nfields > 1``, *dens* is a 1-D array of length *nfields*.
         """
         # Allow lists/tuples as input, convert to numpy arrays for shape checks
         pos_start_np = np.asarray(pos_start)
