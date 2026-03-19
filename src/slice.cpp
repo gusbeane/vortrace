@@ -23,19 +23,18 @@ void Slice::makeSlice(const PointCloud &cloud)
     throw std::runtime_error("Slice extent out of bounds of current cloud subbox");
   }
 
-  //Pull out some elements in case of omp slowdown issues
-  //Likely unnecessary, compiler should take care of it
+  nfields = cloud.get_nfields();
+
   size_t npix_x = npix[0];
   size_t npix_y = npix[1];
 
   Float start_x = extent[0];
   Float start_y = extent[2];
-  //Create slice(s)
   Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
   Float deltay = (extent[3] - extent[2]) / (npix_y - 1);
 
-  //resize result vector(s)
-  dens_slice.resize(npix_x * npix_y);
+  size_t ngrid = npix_x * npix_y;
+  slice_data.resize(ngrid * nfields);
 
   if (vortrace::verbose) std::cout << "Making slice...\n";
 #ifdef TIMING_INFO
@@ -52,7 +51,9 @@ void Slice::makeSlice(const PointCloud &cloud)
       query_pt[1] = start_y + deltay * j;
       query_pt[2] = depth;
       result_idx = cloud.queryTree(query_pt);
-      dens_slice[i * npix_y + j] = cloud.get_field(result_idx, 0);
+      size_t base = (i * npix_y + j) * nfields;
+      for(size_t f = 0; f < nfields; f++)
+        slice_data[base + f] = cloud.get_field(result_idx, f);
     }
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
@@ -64,7 +65,7 @@ void Slice::makeSlice(const PointCloud &cloud)
 
 void Slice::saveSlice(const std::string savename) const
 {
-  if(dens_slice.empty())
+  if(slice_data.empty())
   {
     throw std::runtime_error("Slice has not yet been made");
   }
@@ -76,8 +77,37 @@ void Slice::saveSlice(const std::string savename) const
     throw std::runtime_error("Unable to open savefile: " + savename);
   }
 
-  for(size_t i = 0; i < dens_slice.size(); i++)
-    myfile << dens_slice[i] << "\n";
+  for(size_t i = 0; i < slice_data.size(); i++)
+    myfile << slice_data[i] << "\n";
 
   myfile.close();
+}
+
+py::array_t<double> Slice::returnSlice(void) const
+{
+  if(slice_data.empty())
+  {
+    throw std::runtime_error("Slice has not yet been made");
+  }
+
+  size_t ngrid = npix[0] * npix[1];
+
+  if(nfields == 1)
+  {
+    auto result = py::array_t<double>(ngrid);
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid; i++)
+      ptr[i] = slice_data[i];
+    return result;
+  }
+  else
+  {
+    auto result = py::array_t<double>({(ssize_t)ngrid, (ssize_t)nfields});
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid * nfields; i++)
+      ptr[i] = slice_data[i];
+    return result;
+  }
 }
