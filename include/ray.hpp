@@ -8,8 +8,6 @@
 
 #include <limits>
 
-enum class ReductionMode { Sum = 0, Max = 1, Min = 2 };
-
 class Ray
 {
   private:

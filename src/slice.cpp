@@ -11,37 +11,32 @@ void Slice::makeSlice(const PointCloud &cloud)
 
   if(!cloud.get_tree_built())
   {
-    std::cout << "There is currently no valid tree for this point cloud.\n";
-    std::cout << "Aborting projection.\n" << std::endl;
-    return;
+    throw std::runtime_error("There is currently no valid tree for this point cloud");
   }
 
   //First check extent is in cloud bounds
   std::array<Float,6> subbox = cloud.get_subbox();
-  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
+  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) ||
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (depth < subbox[4]) || (depth > subbox[5]))
   {
-    std::cout << "Slice extent out of bounds of current cloud subbox.\n";
-    std::cout << "Aborting slice production." << std::endl;
-    return;
+    throw std::runtime_error("Slice extent out of bounds of current cloud subbox");
   }
 
-  //Pull out some elements in case of omp slowdown issues
-  //Likely unnecessary, compiler should take care of it
+  nfields = cloud.get_nfields();
+
   size_t npix_x = npix[0];
   size_t npix_y = npix[1];
 
   Float start_x = extent[0];
   Float start_y = extent[2];
-  //Create slice(s)
   Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
+  Float deltay = (extent[3] - extent[2]) / (npix_y - 1);
 
-  //resize result vector(s)
-  dens_slice.resize(npix_x * npix_y);
-  
-  std::cout << "Making slice...\n";
+  size_t ngrid = npix_x * npix_y;
+  slice_data.resize(ngrid * nfields);
+
+  if (vortrace::verbose) std::cout << "Making slice...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -56,36 +51,63 @@ void Slice::makeSlice(const PointCloud &cloud)
       query_pt[1] = start_y + deltay * j;
       query_pt[2] = depth;
       result_idx = cloud.queryTree(query_pt);
-      dens_slice[i * npix_y + j] = cloud.get_dens(result_idx);
+      size_t base = (i * npix_y + j) * nfields;
+      for(size_t f = 0; f < nfields; f++)
+        slice_data[base + f] = cloud.get_field(result_idx, f);
     }
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Slice generation took " << duration.count() << " microseconds\n";
+    if (vortrace::verbose) std::cout << "Slice generation took " << duration.count() << " microseconds\n";
 #endif
-  std::cout << "Slice complete." << std::endl;
+  if (vortrace::verbose) std::cout << "Slice complete." << std::endl;
 }
 
 void Slice::saveSlice(const std::string savename) const
 {
-  std::cout << "Saving slice to " << savename << "...\n";
-  //First check if slice has been made
-  if(dens_slice.empty())
+  if(slice_data.empty())
   {
-    std::cout << "Slice has not yet been made. Aborting save." << std::endl;
-    return;
+    throw std::runtime_error("Slice has not yet been made");
   }
 
+  if (vortrace::verbose) std::cout << "Saving slice to " << savename << "...\n";
   std::ofstream myfile(savename, std::ios::trunc);
-  if (myfile.is_open())
+  if (!myfile.is_open())
   {
-    for(size_t i = 0; i < dens_slice.size(); i++)
-      myfile << dens_slice[i] << "\n";
-
-    myfile.close();
+    throw std::runtime_error("Unable to open savefile: " + savename);
   }
-  else std::cout << "Unable to open savefile." << std::endl;
 
+  for(size_t i = 0; i < slice_data.size(); i++)
+    myfile << slice_data[i] << "\n";
+
+  myfile.close();
 }
 
+py::array_t<double> Slice::returnSlice(void) const
+{
+  if(slice_data.empty())
+  {
+    throw std::runtime_error("Slice has not yet been made");
+  }
 
+  size_t ngrid = npix[0] * npix[1];
+
+  if(nfields == 1)
+  {
+    auto result = py::array_t<double>(ngrid);
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid; i++)
+      ptr[i] = slice_data[i];
+    return result;
+  }
+  else
+  {
+    auto result = py::array_t<double>({(ssize_t)ngrid, (ssize_t)nfields});
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid * nfields; i++)
+      ptr[i] = slice_data[i];
+    return result;
+  }
+}

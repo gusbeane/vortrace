@@ -17,8 +17,8 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
   py::buffer_info buf_pos_start = pos_start.request();
   py::buffer_info buf_pos_end = pos_end.request();
 
-  Float *pos_start_ptr = (Float *) buf_pos_start.ptr,
-          *pos_end_ptr = (Float *) buf_pos_end.ptr;
+  auto *pos_start_ptr = static_cast<Float *>(buf_pos_start.ptr);
+  auto *pos_end_ptr = static_cast<Float *>(buf_pos_end.ptr);
 
   // Check to ensure they have the correct dimensions
   if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)
@@ -27,7 +27,6 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
   // Check to ensure they have the same number of particles.
   if (buf_pos_start.size != buf_pos_end.size)
   {
-    std::cout << "buf_pos_start.size=" << buf_pos_start.size << "buf_pos_end.size=" << buf_pos_end.size <<"\n";
     throw std::runtime_error("PROJECTION: pos_start and pos_end must have same sizes");
   }
 
@@ -49,30 +48,30 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
 }
 
-void Projection::makeProjection(const PointCloud &cloud, int reduction)
+void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
 
   if(!cloud.get_tree_built())
   {
-    std::cout << "There is currently no valid tree for this point cloud.\n";
-    std::cout << "Aborting projection.\n" << std::endl;
-    return;
+    throw std::runtime_error("There is currently no valid tree for this point cloud");
   }
 
   nfields = cloud.get_nfields();
-  ReductionMode mode = static_cast<ReductionMode>(reduction);
 
   //resize and zero result vector(s)
   proj_data.resize(ngrid * nfields);
-  memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+  std::fill(proj_data.begin(), proj_data.end(), 0.0);
 
-  std::cout << "Making projection...\n";
+  if (vortrace::verbose) std::cout << "Making projection...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
+  std::exception_ptr eptr = nullptr;
   #pragma omp parallel for schedule(dynamic,256)
   for(size_t i = 0; i < ngrid; i++)
   {
+    if (eptr) continue;
+    try {
         Ray projray(pts_start[i], pts_end[i]);
         projray.integrate(cloud, mode);
 
@@ -85,14 +84,19 @@ void Projection::makeProjection(const PointCloud &cloud, int reduction)
 
         for(size_t f = 0; f < nfields; f++)
           proj_data[i * nfields + f] = (*src)[f];
+    } catch (...) {
+      #pragma omp critical
+      { if (!eptr) eptr = std::current_exception(); }
+    }
   }
+  if (eptr) std::rethrow_exception(eptr);
 
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << "Projection generation took " << duration.count() << " milliseconds." << std::endl;
+    if (vortrace::verbose) std::cout << "Projection generation took " << duration.count() << " milliseconds." << std::endl;
 #else
-    std::cout << "Projection complete." << std::endl;
+    if (vortrace::verbose) std::cout << "Projection complete." << std::endl;
 #endif
 }
 
@@ -101,8 +105,7 @@ py::array_t<double> Projection::returnProjection(void) const
   //First check if projection has been made
   if(proj_data.empty())
   {
-    std::cout << "Projection has not yet been made. Aborting." << std::endl;
-    exit(1);
+    throw std::runtime_error("Projection has not yet been made");
   }
 
   if(nfields == 1)

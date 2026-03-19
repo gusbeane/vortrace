@@ -146,11 +146,9 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
         ntree_id = pts[next].tree_id;
         break;
       case 1:
-        printf("Unlucky! mode=1\n");
-        exit(-1);
+        throw std::runtime_error("Ray integration encountered degenerate mode=1 at split point");
       case 2:
-        printf("Unlucky! mode=2\n");
-        exit(-1);
+        throw std::runtime_error("Ray integration encountered degenerate mode=2 at split point");
       case 3:
         pts.emplace_back(stree_id, next, s);
         next = pts.size() - 1;

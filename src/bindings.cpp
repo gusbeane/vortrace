@@ -6,6 +6,12 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(Cvortrace, m) {
+    m.def("set_verbose", [](bool v){ vortrace::verbose = v; },
+          py::arg("verbose"),
+          "Enable or disable C++ stdout messages");
+    m.def("get_verbose", [](){ return vortrace::verbose; },
+          "Return current verbosity setting");
+
     py::enum_<ReductionMode>(m, "ReductionMode")
         .value("Sum", ReductionMode::Sum)
         .value("Max", ReductionMode::Max)
@@ -16,26 +22,32 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def(py::init<>())
         .def("loadPoints", &PointCloud::loadPoints)
         .def("buildTree", &PointCloud::buildTree)
-        .def("get_nfields", &PointCloud::get_nfields);
+        .def("get_nfields", &PointCloud::get_nfields)
+        .def("get_pt", &PointCloud::get_pt)
+        .def("get_field", &PointCloud::get_field)
+        .def("get_subbox", &PointCloud::get_subbox)
+        .def("get_tree_built", &PointCloud::get_tree_built);
 
     py::class_<Projection>(m, "Projection")
         .def(py::init<
             py::array_t<Float, py::array::c_style | py::array::forcecast>,
             py::array_t<Float, py::array::c_style | py::array::forcecast>>())
         .def("makeProjection", &Projection::makeProjection, py::call_guard<py::gil_scoped_release>(),
-             py::arg("cloud"), py::arg("reduction") = 0)
+             py::arg("cloud"), py::arg("reduction") = ReductionMode::Sum)
         .def("returnProjection", &Projection::returnProjection);
 
     py::class_<BruteProjection>(m, "BruteProjection")
         .def(py::init<std::array<size_t,3>, std::array<Float,6>>())
         .def("makeProjection", &BruteProjection::makeProjection, py::call_guard<py::gil_scoped_release>(),
-             py::arg("cloud"), py::arg("reduction") = 0)
-        .def("saveProjection", &BruteProjection::saveProjection);
+             py::arg("cloud"), py::arg("reduction") = ReductionMode::Sum)
+        .def("saveProjection", &BruteProjection::saveProjection)
+        .def("returnProjection", &BruteProjection::returnProjection);
 
     py::class_<Slice>(m, "Slice")
         .def(py::init<std::array<size_t,2>, std::array<Float,4>, Float>())
         .def("makeSlice", &Slice::makeSlice, py::call_guard<py::gil_scoped_release>())
-        .def("saveSlice", &Slice::saveSlice);
+        .def("saveSlice", &Slice::saveSlice)
+        .def("returnSlice", &Slice::returnSlice);
 
     py::class_<Ray>(m, "Ray")
         .def(py::init<Point, Point>())

@@ -233,7 +233,7 @@ class TestMultiFieldIO:
         loaded = io.load_cloud(path)
 
         np.testing.assert_array_equal(loaded.pos_orig, cloud.pos_orig)
-        np.testing.assert_array_equal(loaded.dens_orig, cloud.dens_orig)
+        np.testing.assert_array_equal(loaded.fields_orig, cloud.fields_orig)
         assert loaded._nfields == 3
         assert loaded.boundbox == cloud.boundbox
 
@@ -250,5 +250,5 @@ class TestMultiFieldIO:
         loaded = io.load_cloud(path)
 
         np.testing.assert_array_equal(loaded.pos_orig, cloud.pos_orig)
-        np.testing.assert_array_equal(loaded.dens_orig, cloud.dens_orig)
+        np.testing.assert_array_equal(loaded.fields_orig, cloud.fields_orig)
         assert loaded._nfields == 3

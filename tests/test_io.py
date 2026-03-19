@@ -83,7 +83,7 @@ class TestCloudIO:
         io.save_cloud(path, cloud)
         loaded = io.load_cloud(path)
         np.testing.assert_array_equal(loaded.pos_orig, cloud.pos_orig)
-        np.testing.assert_array_equal(loaded.dens_orig, cloud.dens_orig)
+        np.testing.assert_array_equal(loaded.fields_orig, cloud.fields_orig)
         assert loaded.boundbox == cloud.boundbox
 
     def test_hdf5_roundtrip(self, tmp_path):
@@ -94,7 +94,7 @@ class TestCloudIO:
         io.save_cloud(path, cloud, fmt="hdf5")
         loaded = io.load_cloud(path)
         np.testing.assert_array_equal(loaded.pos_orig, cloud.pos_orig)
-        np.testing.assert_array_equal(loaded.dens_orig, cloud.dens_orig)
+        np.testing.assert_array_equal(loaded.fields_orig, cloud.fields_orig)
         np.testing.assert_array_almost_equal(loaded.boundbox, cloud.boundbox)
 
     def test_convenience_methods(self, tmp_path):
@@ -105,7 +105,7 @@ class TestCloudIO:
         cloud.save(path)
         loaded = ProjectionCloud.load(path)
         np.testing.assert_array_equal(loaded.pos_orig, cloud.pos_orig)
-        np.testing.assert_array_equal(loaded.dens_orig, cloud.dens_orig)
+        np.testing.assert_array_equal(loaded.fields_orig, cloud.fields_orig)
 
     def test_unknown_format_raises(self, tmp_path):
         pos, dens, boundbox = self._make_cloud_data()

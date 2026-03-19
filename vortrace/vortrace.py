@@ -10,23 +10,16 @@ Todo:
 
 """
 
-try:
-    # Preferred: C extension built into vortrace package
-    from .Cvortrace import PointCloud, Projection, Ray  # type: ignore
-except ModuleNotFoundError:
-    # Fallback: the extension was built at the top-level
-    # (e.g. via scikit-build-core default)
-    # In that case, try importing it as a top-level module and expose
-    # the same names.
-    from importlib import import_module
+import logging
 
-    _cmod = import_module("Cvortrace")
-    PointCloud = _cmod.PointCloud  # type: ignore
-    Projection = _cmod.Projection  # type: ignore
-    Ray = _cmod.Ray  # type: ignore
+from .Cvortrace import (  # type: ignore
+    PointCloud, Projection, Ray, ReductionMode,
+)
 
 from vortrace import grid as gr
 import numpy as np
+
+_log = logging.getLogger("vortrace")
 
 
 class ProjectionCloud:
@@ -43,21 +36,27 @@ class ProjectionCloud:
 
     """
 
-    _REDUCTION_MAP = {'integrate': 0, 'sum': 0, 'max': 1, 'min': 2}
+    _REDUCTION_MAP = {
+        'integrate': ReductionMode.Sum,
+        'sum': ReductionMode.Sum,
+        'max': ReductionMode.Max,
+        'min': ReductionMode.Min,
+    }
 
-    def __init__(self, pos, dens, boundbox=None):
+    def __init__(self, pos, fields, boundbox=None):
         # Store original data
         self.pos_orig = np.array(pos)
-        self.dens_orig = np.array(dens)
+        self.fields_orig = np.array(fields)
 
-        dens_array = np.array(dens)
+        fields_array = np.array(fields)
         # Determine number of fields
-        if dens_array.ndim == 1:
+        if fields_array.ndim == 1:
             self._nfields = 1
-        elif dens_array.ndim == 2:
-            self._nfields = dens_array.shape[1]
+        elif fields_array.ndim == 2:
+            self._nfields = fields_array.shape[1]
         else:
-            raise ValueError("dens must be 1D (npart,) or 2D (npart, nfields)")
+            raise ValueError(
+                "fields must be 1D (npart,) or 2D (npart, nfields)")
 
         if boundbox is None:
             boundbox = [
@@ -73,9 +72,10 @@ class ProjectionCloud:
         dy = boundbox[3] - boundbox[2]  # box size in y
         dz = boundbox[5] - boundbox[4]  # box size in z
 
-        pad_x = 0.15 * dx
-        pad_y = 0.15 * dy
-        pad_z = 0.15 * dz
+        pad_frac = 0.15
+        pad_x = pad_frac * dx
+        pad_y = pad_frac * dy
+        pad_z = pad_frac * dz
 
         xmin = boundbox[0] - pad_x
         xmax = boundbox[1] + pad_x
@@ -91,18 +91,18 @@ class ProjectionCloud:
                 (pos_array[:, 1] >= ymin) & (pos_array[:, 1] <= ymax) &
                 (pos_array[:, 2] >= zmin) & (pos_array[:, 2] <= zmax))
 
-        npart_orig = dens_array.shape[0]
+        npart_orig = fields_array.shape[0]
 
         # Apply the mask to filter particles
         self.pos = pos_array[mask]
-        self.dens = dens_array[mask]
+        self.fields = fields_array[mask]
         self.orig_ids = np.arange(npart_orig)[mask]
 
-        print(f"Applied bounding box filter: {npart_orig} -> "
-              f"{self.dens.shape[0]} particles")
+        _log.info("Applied bounding box filter: %d -> %d particles",
+                  npart_orig, self.fields.shape[0])
 
         self._cloud = PointCloud()
-        self._cloud.loadPoints(self.pos, self.dens, boundbox)
+        self._cloud.loadPoints(self.pos, self.fields, boundbox)
         self._cloud.buildTree()
 
     def _prepare_array_for_backend(self, arr):
@@ -121,9 +121,27 @@ class ProjectionCloud:
 
     def grid_projection(self, extent, nres, bounds, center, *, proj=None,
                         yaw=0., pitch=0., roll=0., reduction='integrate'):
+        """Make a grid projection through the point cloud.
 
-        reduction_int = self._REDUCTION_MAP.get(reduction)
-        if reduction_int is None:
+        Args:
+            extent: Spatial extent ``[min, max]`` or ``[[xmin,xmax],
+                [ymin,ymax]]``.
+            nres: Number of pixels (int for square, or ``(nx, ny)``).
+            bounds: Integration bounds ``[z_start, z_end]``.
+            center: Rotation center ``(x, y, z)`` or None.
+            proj: Cartesian projection string (e.g. ``'xy'``).
+            yaw: Yaw angle in radians.
+            pitch: Pitch angle in radians.
+            roll: Roll angle in radians.
+            reduction: ``'integrate'``/``'sum'``, ``'max'``,
+                or ``'min'``.
+
+        Returns:
+            ndarray: Shape ``(nres, nres)`` for single field, or
+                ``(nres, nres, nfields)`` for multi-field.
+        """
+        reduction_mode = self._REDUCTION_MAP.get(reduction)
+        if reduction_mode is None:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
@@ -140,7 +158,7 @@ class ProjectionCloud:
 
         # Actually do the projection using the Cvortrace backend.
         proj_obj = Projection(pos_start, pos_end)
-        proj_obj.makeProjection(self._cloud, reduction_int)
+        proj_obj.makeProjection(self._cloud, reduction_mode)
         dat = proj_obj.returnProjection()
 
         # Reshape before returning.
@@ -162,8 +180,8 @@ class ProjectionCloud:
             dat (array of float): The projection data. Shape ``(N,)`` when
                 a single field was loaded, ``(N, nfields)`` otherwise.
         """
-        reduction_int = self._REDUCTION_MAP.get(reduction)
-        if reduction_int is None:
+        reduction_mode = self._REDUCTION_MAP.get(reduction)
+        if reduction_mode is None:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
@@ -180,7 +198,7 @@ class ProjectionCloud:
 
         # now safe to call into C++
         proj_obj = Projection(pos_start, pos_end)
-        proj_obj.makeProjection(self._cloud, reduction_int)
+        proj_obj.makeProjection(self._cloud, reduction_mode)
         return proj_obj.returnProjection()
 
     def single_projection(self, pos_start, pos_end, return_midpoint=True):
@@ -287,17 +305,16 @@ class ProjectionCloud:
 
         # Validation: check that column values are consistent with segments
         if self._nfields == 1:
-            # scalar dens for backward compat
-            dens_field = self.dens[cell_ids]
+            field_vals = self.fields[cell_ids]
         else:
-            # dens is 2D: (npart, nfields); index first field for validation
-            dens_field = self.dens[cell_ids, 0]
+            # fields is 2D: (npart, nfields); index first field for validation
+            field_vals = self.fields[cell_ids, 0]
 
         if not np.isclose(col_vals[0],
-                          np.sum(dens_field * ds_vals)):
+                          np.sum(field_vals * ds_vals)):
             raise ValueError(f"extracted ray cells and ds does not give "
                              f"consistent density: {col_vals[0]} != "
-                             f"{np.sum(dens_field * ds_vals)}")
+                             f"{np.sum(field_vals * ds_vals)}")
 
         # Return scalar dens for backward compat when nfields == 1
         dens_out = col_vals[0] if self._nfields == 1 else col_vals

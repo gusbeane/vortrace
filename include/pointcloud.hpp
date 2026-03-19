@@ -40,7 +40,6 @@ class PointCloud
     bool get_tree_built() const {return tree_built;}
     Point get_pt(const size_t idx) const {return pts[idx];}
     Float get_field(const size_t idx, const size_t f) const {return fields[idx * nfields + f];}
-    Float get_dens(const size_t idx) const {return get_field(idx, 0);}
     size_t get_nfields() const {return nfields;}
 
     //Required methods for nanoflann adaptor.

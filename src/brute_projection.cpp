@@ -9,14 +9,12 @@
 #include <chrono>
 #endif
 
-void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
+void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
 
   if(!cloud.get_tree_built())
   {
-    std::cout << "There is currently no valid tree for this point cloud.\n";
-    std::cout << "Aborting projection.\n" << std::endl;
-    return;
+    throw std::runtime_error("There is currently no valid tree for this point cloud");
   }
 
   //First check extent is in point cloud bounds
@@ -25,13 +23,10 @@ void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (extent[4] < subbox[4]) || (extent[5] > subbox[5]))
   {
-    std::cout << "Projection extent out of bounds of current cloud subbox.\n";
-    std::cout << "Aborting projection production." << std::endl;
-    return;
+    throw std::runtime_error("Projection extent out of bounds of current cloud subbox");
   }
 
   nfields = cloud.get_nfields();
-  ReductionMode mode = static_cast<ReductionMode>(reduction);
 
   //Pull out some elements in case of omp slowdown issues
   //Likely unnecessary, compiler should take care of it
@@ -51,14 +46,14 @@ void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
   //resize and zero/init result vector(s)
   proj_data.resize(ngrid * nfields);
   if (mode == ReductionMode::Sum) {
-    memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+    std::fill(proj_data.begin(), proj_data.end(), 0.0);
   } else if (mode == ReductionMode::Max) {
     std::fill(proj_data.begin(), proj_data.end(), -std::numeric_limits<Float>::infinity());
   } else {
     std::fill(proj_data.begin(), proj_data.end(), std::numeric_limits<Float>::infinity());
   }
 
-  std::cout << "Making projection...\n";
+  if (vortrace::verbose) std::cout << "Making projection...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -100,32 +95,58 @@ void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << "Projection generation took " << duration.count() << " milliseconds.\n";
+    if (vortrace::verbose) std::cout << "Projection generation took " << duration.count() << " milliseconds.\n";
 #endif
-  std::cout << "Projection complete." << std::endl;
+  if (vortrace::verbose) std::cout << "Projection complete." << std::endl;
 }
 
 void BruteProjection::saveProjection(const std::string savename) const
 {
-  std::cout << "Saving projection to " << savename << "...   ";
-  //First check if slice has been made
   if(proj_data.empty())
   {
-    std::cout << "Projection has not yet been made. Aborting save." << std::endl;
-    return;
+    throw std::runtime_error("Projection has not yet been made");
   }
 
+  if (vortrace::verbose) std::cout << "Saving projection to " << savename << "...   ";
   std::ofstream myfile(savename, std::ios::trunc);
-  if (myfile.is_open())
+  if (!myfile.is_open())
   {
-    for(size_t i = 0; i < proj_data.size(); i++)
-      myfile << proj_data[i] << "\n";
-
-    myfile.close();
-    std::cout << "Done." << std::endl;
+    throw std::runtime_error("Unable to open savefile: " + savename);
   }
-  else std::cout << "Unable to open savefile." << std::endl;
+
+  for(size_t i = 0; i < proj_data.size(); i++)
+    myfile << proj_data[i] << "\n";
+
+  myfile.close();
+  if (vortrace::verbose) std::cout << "Done." << std::endl;
 
 }
 
+py::array_t<double> BruteProjection::returnProjection(void) const
+{
+  if(proj_data.empty())
+  {
+    throw std::runtime_error("Projection has not yet been made");
+  }
 
+  size_t ngrid = npix[0] * npix[1];
+
+  if(nfields == 1)
+  {
+    auto result = py::array_t<double>(ngrid);
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid; i++)
+      ptr[i] = proj_data[i];
+    return result;
+  }
+  else
+  {
+    auto result = py::array_t<double>({(ssize_t)ngrid, (ssize_t)nfields});
+    py::buffer_info buf = result.request();
+    auto *ptr = static_cast<double *>(buf.ptr);
+    for(size_t i = 0; i < ngrid * nfields; i++)
+      ptr[i] = proj_data[i];
+    return result;
+  }
+}
