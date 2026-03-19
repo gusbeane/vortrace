@@ -16,3 +16,4 @@ venv/
 run/
 .DS_Store
 .cache/
+docs/_build/
