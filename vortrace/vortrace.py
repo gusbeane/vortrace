@@ -12,21 +12,9 @@ Todo:
 
 import logging
 
-try:
-    # Preferred: C extension built into vortrace package
-    from .Cvortrace import PointCloud, Projection, Ray, ReductionMode  # type: ignore
-except ModuleNotFoundError:
-    # Fallback: the extension was built at the top-level
-    # (e.g. via scikit-build-core default)
-    # In that case, try importing it as a top-level module and expose
-    # the same names.
-    from importlib import import_module
-
-    _cmod = import_module("Cvortrace")
-    PointCloud = _cmod.PointCloud  # type: ignore
-    Projection = _cmod.Projection  # type: ignore
-    Ray = _cmod.Ray  # type: ignore
-    ReductionMode = _cmod.ReductionMode  # type: ignore
+from .Cvortrace import (  # type: ignore
+    PointCloud, Projection, Ray, ReductionMode,
+)
 
 from vortrace import grid as gr
 import numpy as np
@@ -133,7 +121,25 @@ class ProjectionCloud:
 
     def grid_projection(self, extent, nres, bounds, center, *, proj=None,
                         yaw=0., pitch=0., roll=0., reduction='integrate'):
+        """Make a grid projection through the point cloud.
 
+        Args:
+            extent: Spatial extent ``[min, max]`` or ``[[xmin,xmax],
+                [ymin,ymax]]``.
+            nres: Number of pixels (int for square, or ``(nx, ny)``).
+            bounds: Integration bounds ``[z_start, z_end]``.
+            center: Rotation center ``(x, y, z)`` or None.
+            proj: Cartesian projection string (e.g. ``'xy'``).
+            yaw: Yaw angle in radians.
+            pitch: Pitch angle in radians.
+            roll: Roll angle in radians.
+            reduction: ``'integrate'``/``'sum'``, ``'max'``,
+                or ``'min'``.
+
+        Returns:
+            ndarray: Shape ``(nres, nres)`` for single field, or
+                ``(nres, nres, nfields)`` for multi-field.
+        """
         reduction_mode = self._REDUCTION_MAP.get(reduction)
         if reduction_mode is None:
             raise ValueError(

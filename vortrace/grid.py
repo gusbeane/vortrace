@@ -88,50 +88,6 @@ def generate_base_grid(extent, nres):
     return grid
 
 
-def _rotation_matrix_from_euler(phi, theta, psi):
-    """Generates a rotation matrix from Euler angles.
-
-    Generates a rotation matrix from a given set of Euler angles.
-
-    The Euler angle convention used here is that given by the 'z-x-z'
-    convention, described here: https://mathworld.wolfram.com/EulerAngles.html
-
-    Args:
-        phi (float): Angle phi, describing the rotation about the original
-            z-axis
-        theta (float): Angle theta, describing the rotation about the new
-            xprime-axis.
-        psi (float): Angle psi, describing the rotation about the new
-            zprime-axis.
-
-    Returns:
-        grid (array of float): A (N,3) array of grid points, where N is the
-            total number of resolution elements in the grid.
-    """
-
-    matd = np.array([
-        [np.cos(phi), np.sin(phi), 0.],
-        [-np.sin(phi), np.cos(phi), 0.],
-        [0., 0., 1.],
-    ])
-
-    matc = np.array([
-        [1., 0., 0.],
-        [0., np.cos(theta), np.sin(theta)],
-        [0., -np.sin(theta), np.cos(theta)],
-    ])
-
-    matb = np.array([
-        [np.cos(psi), np.sin(psi), 0.],
-        [-np.sin(psi), np.cos(psi), 0.],
-        [0., 0., 1.],
-    ])
-
-    mata = np.matmul(np.matmul(matb, matc), matd)
-
-    return mata
-
-
 def _rotation_matrix_from_yaw_pitch_roll(yaw, pitch, roll):
     ca, sa = np.cos(yaw), np.sin(yaw)
     cb, sb = np.cos(pitch), np.sin(pitch)

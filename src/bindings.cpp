@@ -22,7 +22,11 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def(py::init<>())
         .def("loadPoints", &PointCloud::loadPoints)
         .def("buildTree", &PointCloud::buildTree)
-        .def("get_nfields", &PointCloud::get_nfields);
+        .def("get_nfields", &PointCloud::get_nfields)
+        .def("get_pt", &PointCloud::get_pt)
+        .def("get_field", &PointCloud::get_field)
+        .def("get_subbox", &PointCloud::get_subbox)
+        .def("get_tree_built", &PointCloud::get_tree_built);
 
     py::class_<Projection>(m, "Projection")
         .def(py::init<
