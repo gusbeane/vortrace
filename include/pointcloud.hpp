@@ -18,18 +18,23 @@ class PointCloud
   private:
     size_t npart = 0;
     size_t nfields = 1;
+    double pad = 0.0;
     std::array<Float,6> subbox;
     std::vector<Point> pts;
     std::vector<Float> fields;  // flat, particle-major: fields[idx * nfields + f]
+    std::vector<size_t> orig_ids;  // maps filtered index -> original index
 
     bool tree_built = false;
     std::unique_ptr<my_kd_tree_t> tree;
 
   public:
 
-    //Load gas from snapshot, applying subbox {xmin,xmax,ymin,ymax,zmin,zmax}
-    //and build tree.  fields_in can be 1D (npart,) or 2D (npart, nfields).
-    void loadPoints(py::array_t<double> pos, py::array_t<double> fields_in, const std::array<Float,6> newsubbox);
+    //Load all particles, filter to padded subbox, build internal arrays.
+    //fields_in can be 1D (npart,) or 2D (npart, nfields).
+    //vol is optional per-cell volumes for adaptive padding.
+    void loadPoints(py::array_t<double> pos, py::array_t<double> fields_in,
+                    const std::array<Float,6> newsubbox,
+                    py::array_t<double> vol = py::array_t<double>());
     void buildTree();
 
     size_t queryTree(const Point &query_pt) const;
@@ -41,6 +46,9 @@ class PointCloud
     Point get_pt(const size_t idx) const {return pts[idx];}
     Float get_field(const size_t idx, const size_t f) const {return fields[idx * nfields + f];}
     size_t get_nfields() const {return nfields;}
+    const std::vector<size_t>& get_orig_ids() const {return orig_ids;}
+    double get_pad() const {return pad;}
+    size_t get_npart() const {return npart;}
 
     //Required methods for nanoflann adaptor.
     inline size_t kdtree_get_point_count() const { return npart;}

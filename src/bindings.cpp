@@ -1,6 +1,7 @@
 #include "class_includes.hpp"
 #include "ray.hpp"
 #include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
@@ -20,13 +21,18 @@ PYBIND11_MODULE(Cvortrace, m) {
 
     py::class_<PointCloud>(m, "PointCloud")
         .def(py::init<>())
-        .def("loadPoints", &PointCloud::loadPoints)
+        .def("loadPoints", &PointCloud::loadPoints,
+             py::arg("pos"), py::arg("fields_in"),
+             py::arg("subbox"), py::arg("vol") = py::array_t<double>())
         .def("buildTree", &PointCloud::buildTree)
         .def("get_nfields", &PointCloud::get_nfields)
         .def("get_pt", &PointCloud::get_pt)
         .def("get_field", &PointCloud::get_field)
         .def("get_subbox", &PointCloud::get_subbox)
-        .def("get_tree_built", &PointCloud::get_tree_built);
+        .def("get_tree_built", &PointCloud::get_tree_built)
+        .def("get_orig_ids", &PointCloud::get_orig_ids)
+        .def("get_pad", &PointCloud::get_pad)
+        .def("get_npart", &PointCloud::get_npart);
 
     py::class_<Projection>(m, "Projection")
         .def(py::init<

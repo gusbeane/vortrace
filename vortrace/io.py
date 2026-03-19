@@ -143,7 +143,10 @@ def save_cloud(filename, cloud, *, fmt="npz"):
     boundbox = np.asarray(cloud.boundbox)
 
     if fmt == "npz":
-        np.savez(filename, pos=pos, fields=fields, boundbox=boundbox)
+        arrays = {"pos": pos, "fields": fields, "boundbox": boundbox}
+        if cloud.vol_orig is not None:
+            arrays["vol"] = np.asarray(cloud.vol_orig)
+        np.savez(filename, **arrays)
 
     elif fmt == "hdf5":
         h5py = _import_h5py()
@@ -151,6 +154,8 @@ def save_cloud(filename, cloud, *, fmt="npz"):
             f.create_dataset("pos", data=pos)
             f.create_dataset("fields", data=fields)
             f.attrs["boundbox"] = boundbox
+            if cloud.vol_orig is not None:
+                f.create_dataset("vol", data=np.asarray(cloud.vol_orig))
     else:
         raise ValueError(f"Unknown format: {fmt!r}. Use 'npz' or 'hdf5'.")
 
@@ -179,11 +184,14 @@ def load_cloud(filename):
             pos = npz["pos"]
             fields = npz["fields"]
             boundbox = npz["boundbox"]
+            vol = npz["vol"] if "vol" in npz else None
     else:
         h5py = _import_h5py()
         with h5py.File(filename, "r") as f:
             pos = f["pos"][:]
             fields = f["fields"][:]
             boundbox = f.attrs["boundbox"]
+            vol = f["vol"][:] if "vol" in f else None
 
-    return ProjectionCloud(pos, fields, boundbox=list(boundbox))
+    return ProjectionCloud(pos, fields, boundbox=list(boundbox),
+                           vol=vol)
