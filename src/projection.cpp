@@ -3,9 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#ifdef TIMING_INFO
 #include <chrono>
-#endif
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
@@ -63,9 +61,7 @@ void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
   std::fill(proj_data.begin(), proj_data.end(), 0.0);
 
   if (vortrace::verbose) std::cout << "Making projection...\n";
-#ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
-#endif
   std::exception_ptr eptr = nullptr;
   #pragma omp parallel for schedule(dynamic,256)
   for(size_t i = 0; i < ngrid; i++)
@@ -91,13 +87,11 @@ void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
   }
   if (eptr) std::rethrow_exception(eptr);
 
-#ifdef TIMING_INFO
+  if (vortrace::verbose) {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    if (vortrace::verbose) std::cout << "Projection generation took " << duration.count() << " milliseconds." << std::endl;
-#else
-    if (vortrace::verbose) std::cout << "Projection complete." << std::endl;
-#endif
+    std::cout << "Projection generation took " << duration.count() << " milliseconds." << std::endl;
+  }
 }
 
 py::array_t<double> Projection::returnProjection(void) const

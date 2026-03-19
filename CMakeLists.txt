@@ -45,7 +45,6 @@ target_include_directories(vortrace_core PUBLIC
   ${CMAKE_SOURCE_DIR}/include
 )
 target_compile_features(vortrace_core PUBLIC cxx_std_17)
-target_compile_definitions(vortrace_core PRIVATE TIMING_INFO)
 # tell your core library about pybind11's include dirs:
 target_link_libraries(vortrace_core
   PUBLIC
