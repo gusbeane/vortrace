@@ -11,20 +11,16 @@ void Slice::makeSlice(const PointCloud &cloud)
 
   if(!cloud.get_tree_built())
   {
-    std::cout << "There is currently no valid tree for this point cloud.\n";
-    std::cout << "Aborting projection.\n" << std::endl;
-    return;
+    throw std::runtime_error("There is currently no valid tree for this point cloud");
   }
 
   //First check extent is in cloud bounds
   std::array<Float,6> subbox = cloud.get_subbox();
-  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) || 
+  if((extent[0] < subbox[0]) || (extent[1] > subbox[1]) ||
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (depth < subbox[4]) || (depth > subbox[5]))
   {
-    std::cout << "Slice extent out of bounds of current cloud subbox.\n";
-    std::cout << "Aborting slice production." << std::endl;
-    return;
+    throw std::runtime_error("Slice extent out of bounds of current cloud subbox");
   }
 
   //Pull out some elements in case of omp slowdown issues
@@ -36,12 +32,12 @@ void Slice::makeSlice(const PointCloud &cloud)
   Float start_y = extent[2];
   //Create slice(s)
   Float deltax = (extent[1] - extent[0]) / (npix_x - 1);
-  Float deltay = (extent[3] - extent[2]) / (npix_y - 1); 
+  Float deltay = (extent[3] - extent[2]) / (npix_y - 1);
 
   //resize result vector(s)
   dens_slice.resize(npix_x * npix_y);
-  
-  std::cout << "Making slice...\n";
+
+  if (vortrace::verbose) std::cout << "Making slice...\n";
 #ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -61,31 +57,27 @@ void Slice::makeSlice(const PointCloud &cloud)
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Slice generation took " << duration.count() << " microseconds\n";
+    if (vortrace::verbose) std::cout << "Slice generation took " << duration.count() << " microseconds\n";
 #endif
-  std::cout << "Slice complete." << std::endl;
+  if (vortrace::verbose) std::cout << "Slice complete." << std::endl;
 }
 
 void Slice::saveSlice(const std::string savename) const
 {
-  std::cout << "Saving slice to " << savename << "...\n";
-  //First check if slice has been made
   if(dens_slice.empty())
   {
-    std::cout << "Slice has not yet been made. Aborting save." << std::endl;
-    return;
+    throw std::runtime_error("Slice has not yet been made");
   }
 
+  if (vortrace::verbose) std::cout << "Saving slice to " << savename << "...\n";
   std::ofstream myfile(savename, std::ios::trunc);
-  if (myfile.is_open())
+  if (!myfile.is_open())
   {
-    for(size_t i = 0; i < dens_slice.size(); i++)
-      myfile << dens_slice[i] << "\n";
-
-    myfile.close();
+    throw std::runtime_error("Unable to open savefile: " + savename);
   }
-  else std::cout << "Unable to open savefile." << std::endl;
 
+  for(size_t i = 0; i < dens_slice.size(); i++)
+    myfile << dens_slice[i] << "\n";
+
+  myfile.close();
 }
-
-

@@ -10,6 +10,8 @@ Todo:
 
 """
 
+import logging
+
 try:
     # Preferred: C extension built into vortrace package
     from .Cvortrace import PointCloud, Projection, Ray  # type: ignore
@@ -27,6 +29,8 @@ except ModuleNotFoundError:
 
 from vortrace import grid as gr
 import numpy as np
+
+_log = logging.getLogger("vortrace")
 
 
 class ProjectionCloud:
@@ -73,9 +77,10 @@ class ProjectionCloud:
         dy = boundbox[3] - boundbox[2]  # box size in y
         dz = boundbox[5] - boundbox[4]  # box size in z
 
-        pad_x = 0.15 * dx
-        pad_y = 0.15 * dy
-        pad_z = 0.15 * dz
+        pad_frac = 0.15
+        pad_x = pad_frac * dx
+        pad_y = pad_frac * dy
+        pad_z = pad_frac * dz
 
         xmin = boundbox[0] - pad_x
         xmax = boundbox[1] + pad_x
@@ -98,8 +103,8 @@ class ProjectionCloud:
         self.dens = dens_array[mask]
         self.orig_ids = np.arange(npart_orig)[mask]
 
-        print(f"Applied bounding box filter: {npart_orig} -> "
-              f"{self.dens.shape[0]} particles")
+        _log.info("Applied bounding box filter: %d -> %d particles",
+                  npart_orig, self.dens.shape[0])
 
         self._cloud = PointCloud()
         self._cloud.loadPoints(self.pos, self.dens, boundbox)

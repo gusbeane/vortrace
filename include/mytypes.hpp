@@ -4,10 +4,13 @@
 #include <array>
 #include <vector>
 
-#define BOX_PAD_MIN 0.85
-#define BOX_PAD_MAX 1.15
-
 using Float = double;
 using Point = std::array<Float,3>;
+
+constexpr double BOX_PAD_FRACTION = 0.15;
+
+namespace vortrace {
+  inline bool verbose = false;
+}
 
 #endif //MYTYPES_HPP

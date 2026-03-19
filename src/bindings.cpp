@@ -6,6 +6,12 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(Cvortrace, m) {
+    m.def("set_verbose", [](bool v){ vortrace::verbose = v; },
+          py::arg("verbose"),
+          "Enable or disable C++ stdout messages");
+    m.def("get_verbose", [](){ return vortrace::verbose; },
+          "Return current verbosity setting");
+
     py::enum_<ReductionMode>(m, "ReductionMode")
         .value("Sum", ReductionMode::Sum)
         .value("Max", ReductionMode::Max)
