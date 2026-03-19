@@ -43,12 +43,13 @@ class ProjectionCloud:
         'min': ReductionMode.Min,
     }
 
-    def __init__(self, pos, fields, boundbox=None):
+    def __init__(self, pos, fields, boundbox=None, vol=None):
         # Store original data
         self.pos_orig = np.array(pos)
         self.fields_orig = np.array(fields)
+        self.vol_orig = np.array(vol) if vol is not None else None
 
-        fields_array = np.array(fields)
+        fields_array = self.fields_orig
         # Determine number of fields
         if fields_array.ndim == 1:
             self._nfields = 1
@@ -66,44 +67,21 @@ class ProjectionCloud:
 
         self.boundbox = boundbox
 
-        # Apply bounding box filtering in Python (matching C++ logic)
-        # Pad by 15% of the box size in each dimension
-        dx = boundbox[1] - boundbox[0]  # box size in x
-        dy = boundbox[3] - boundbox[2]  # box size in y
-        dz = boundbox[5] - boundbox[4]  # box size in z
+        # C++ handles filtering internally
+        self._cloud = PointCloud()
+        if self.vol_orig is not None:
+            self._cloud.loadPoints(self.pos_orig, self.fields_orig,
+                                   boundbox, self.vol_orig)
+        else:
+            self._cloud.loadPoints(self.pos_orig, self.fields_orig,
+                                   boundbox)
+        self._cloud.buildTree()
 
-        pad_frac = 0.15
-        pad_x = pad_frac * dx
-        pad_y = pad_frac * dy
-        pad_z = pad_frac * dz
-
-        xmin = boundbox[0] - pad_x
-        xmax = boundbox[1] + pad_x
-        ymin = boundbox[2] - pad_y
-        ymax = boundbox[3] + pad_y
-        zmin = boundbox[4] - pad_z
-        zmax = boundbox[5] + pad_z
-
-        # Find particles within the padded bounding box
-        pos_array = np.array(pos)
-
-        mask = ((pos_array[:, 0] >= xmin) & (pos_array[:, 0] <= xmax) &
-                (pos_array[:, 1] >= ymin) & (pos_array[:, 1] <= ymax) &
-                (pos_array[:, 2] >= zmin) & (pos_array[:, 2] <= zmax))
-
-        npart_orig = fields_array.shape[0]
-
-        # Apply the mask to filter particles
-        self.pos = pos_array[mask]
-        self.fields = fields_array[mask]
-        self.orig_ids = np.arange(npart_orig)[mask]
+        # Get filtered index mapping from C++
+        self.orig_ids = np.array(self._cloud.get_orig_ids())
 
         _log.info("Applied bounding box filter: %d -> %d particles",
-                  npart_orig, self.fields.shape[0])
-
-        self._cloud = PointCloud()
-        self._cloud.loadPoints(self.pos, self.fields, boundbox)
-        self._cloud.buildTree()
+                  len(self.pos_orig), len(self.orig_ids))
 
     def _prepare_array_for_backend(self, arr):
         """Converts input to a C-contiguous float64 numpy array if not already.
@@ -304,11 +282,12 @@ class ProjectionCloud:
             raise ValueError('pos_start and pos_end are in the same cell')
 
         # Validation: check that column values are consistent with segments
+        # Map filtered cell_ids back to original indices for field lookup
+        orig_cell_ids = self.orig_ids[cell_ids]
         if self._nfields == 1:
-            field_vals = self.fields[cell_ids]
+            field_vals = self.fields_orig[orig_cell_ids]
         else:
-            # fields is 2D: (npart, nfields); index first field for validation
-            field_vals = self.fields[cell_ids, 0]
+            field_vals = self.fields_orig[orig_cell_ids, 0]
 
         if not np.isclose(col_vals[0],
                           np.sum(field_vals * ds_vals)):
