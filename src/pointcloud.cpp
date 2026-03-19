@@ -1,7 +1,5 @@
 #include "pointcloud.hpp"
-#ifdef TIMING_INFO
 #include <chrono>
-#endif
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <iostream>
@@ -128,19 +126,15 @@ void PointCloud::buildTree()
   //Now build tree
   //reset here (vs make_unique) in case snap is reloaded
   if (vortrace::verbose) std::cout << "Building tree...\n";
-#ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
-#endif
   tree.reset(new my_kd_tree_t(3,*this,nanoflann::KDTreeSingleIndexAdaptorParams(10 /* max leaf */)));
   tree->buildIndex();
   tree_built = true;
-#ifdef TIMING_INFO
+  if (vortrace::verbose) {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    if (vortrace::verbose) std::cout << "Tree build took " << duration.count() << " milliseconds." << std::endl;
-#else
-    if (vortrace::verbose) std::cout << " Done." << std::endl;
-#endif
+    std::cout << "Tree build took " << duration.count() << " milliseconds." << std::endl;
+  }
 }
 
 size_t PointCloud::queryTree(const Point &query_pt) const

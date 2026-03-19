@@ -2,9 +2,7 @@
 #include "slice.hpp"
 #include <iostream>
 #include <fstream>
-#ifdef TIMING_INFO
 #include <chrono>
-#endif
 
 void Slice::makeSlice(const PointCloud &cloud)
 {
@@ -37,9 +35,7 @@ void Slice::makeSlice(const PointCloud &cloud)
   slice_data.resize(ngrid * nfields);
 
   if (vortrace::verbose) std::cout << "Making slice...\n";
-#ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
-#endif
 
   #pragma omp parallel for schedule(dynamic,256) collapse(2)
   for(size_t i = 0; i < npix_x; i++)
@@ -55,12 +51,12 @@ void Slice::makeSlice(const PointCloud &cloud)
       for(size_t f = 0; f < nfields; f++)
         slice_data[base + f] = cloud.get_field(result_idx, f);
     }
-#ifdef TIMING_INFO
+
+  if (vortrace::verbose) {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    if (vortrace::verbose) std::cout << "Slice generation took " << duration.count() << " microseconds\n";
-#endif
-  if (vortrace::verbose) std::cout << "Slice complete." << std::endl;
+    std::cout << "Slice generation took " << duration.count() << " microseconds." << std::endl;
+  }
 }
 
 void Slice::saveSlice(const std::string savename) const

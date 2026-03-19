@@ -5,9 +5,7 @@
 #include <cstring>
 #include <algorithm>
 #include <limits>
-#ifdef TIMING_INFO
 #include <chrono>
-#endif
 
 void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
@@ -54,9 +52,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode
   }
 
   if (vortrace::verbose) std::cout << "Making projection...\n";
-#ifdef TIMING_INFO
   auto start = std::chrono::high_resolution_clock::now();
-#endif
   #pragma omp parallel for schedule(dynamic,256) collapse(2)
   for(size_t i = 0; i < npix_x; i++)
     for(size_t j = 0; j < npix_y; j++)
@@ -92,12 +88,11 @@ void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode
       proj_data[i] *= deltaz;
   }
 
-#ifdef TIMING_INFO
+  if (vortrace::verbose) {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    if (vortrace::verbose) std::cout << "Projection generation took " << duration.count() << " milliseconds.\n";
-#endif
-  if (vortrace::verbose) std::cout << "Projection complete." << std::endl;
+    std::cout << "Projection generation took " << duration.count() << " milliseconds." << std::endl;
+  }
 }
 
 void BruteProjection::saveProjection(const std::string savename) const
