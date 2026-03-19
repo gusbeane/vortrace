@@ -9,7 +9,7 @@
 #include <chrono>
 #endif
 
-void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
+void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
 
   if(!cloud.get_tree_built())
@@ -27,7 +27,6 @@ void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
   }
 
   nfields = cloud.get_nfields();
-  ReductionMode mode = static_cast<ReductionMode>(reduction);
 
   //Pull out some elements in case of omp slowdown issues
   //Likely unnecessary, compiler should take care of it
@@ -47,7 +46,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud, int reduction)
   //resize and zero/init result vector(s)
   proj_data.resize(ngrid * nfields);
   if (mode == ReductionMode::Sum) {
-    memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+    std::fill(proj_data.begin(), proj_data.end(), 0.0);
   } else if (mode == ReductionMode::Max) {
     std::fill(proj_data.begin(), proj_data.end(), -std::numeric_limits<Float>::infinity());
   } else {

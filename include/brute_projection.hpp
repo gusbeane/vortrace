@@ -18,7 +18,7 @@ class BruteProjection
     BruteProjection(std::array<size_t,3> npix, std::array<Float,6> extent) :
       npix(npix), extent(extent), nfields(0) {}
 
-    void makeProjection(const PointCloud &cloud, int reduction = 0);
+    void makeProjection(const PointCloud &cloud, ReductionMode reduction = ReductionMode::Sum);
     void saveProjection(const std::string savename) const;
 
 };

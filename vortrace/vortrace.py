@@ -14,7 +14,7 @@ import logging
 
 try:
     # Preferred: C extension built into vortrace package
-    from .Cvortrace import PointCloud, Projection, Ray  # type: ignore
+    from .Cvortrace import PointCloud, Projection, Ray, ReductionMode  # type: ignore
 except ModuleNotFoundError:
     # Fallback: the extension was built at the top-level
     # (e.g. via scikit-build-core default)
@@ -26,6 +26,7 @@ except ModuleNotFoundError:
     PointCloud = _cmod.PointCloud  # type: ignore
     Projection = _cmod.Projection  # type: ignore
     Ray = _cmod.Ray  # type: ignore
+    ReductionMode = _cmod.ReductionMode  # type: ignore
 
 from vortrace import grid as gr
 import numpy as np
@@ -47,7 +48,12 @@ class ProjectionCloud:
 
     """
 
-    _REDUCTION_MAP = {'integrate': 0, 'sum': 0, 'max': 1, 'min': 2}
+    _REDUCTION_MAP = {
+        'integrate': ReductionMode.Sum,
+        'sum': ReductionMode.Sum,
+        'max': ReductionMode.Max,
+        'min': ReductionMode.Min,
+    }
 
     def __init__(self, pos, dens, boundbox=None):
         # Store original data
@@ -127,8 +133,8 @@ class ProjectionCloud:
     def grid_projection(self, extent, nres, bounds, center, *, proj=None,
                         yaw=0., pitch=0., roll=0., reduction='integrate'):
 
-        reduction_int = self._REDUCTION_MAP.get(reduction)
-        if reduction_int is None:
+        reduction_mode = self._REDUCTION_MAP.get(reduction)
+        if reduction_mode is None:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
@@ -145,7 +151,7 @@ class ProjectionCloud:
 
         # Actually do the projection using the Cvortrace backend.
         proj_obj = Projection(pos_start, pos_end)
-        proj_obj.makeProjection(self._cloud, reduction_int)
+        proj_obj.makeProjection(self._cloud, reduction_mode)
         dat = proj_obj.returnProjection()
 
         # Reshape before returning.
@@ -167,8 +173,8 @@ class ProjectionCloud:
             dat (array of float): The projection data. Shape ``(N,)`` when
                 a single field was loaded, ``(N, nfields)`` otherwise.
         """
-        reduction_int = self._REDUCTION_MAP.get(reduction)
-        if reduction_int is None:
+        reduction_mode = self._REDUCTION_MAP.get(reduction)
+        if reduction_mode is None:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
@@ -185,7 +191,7 @@ class ProjectionCloud:
 
         # now safe to call into C++
         proj_obj = Projection(pos_start, pos_end)
-        proj_obj.makeProjection(self._cloud, reduction_int)
+        proj_obj.makeProjection(self._cloud, reduction_mode)
         return proj_obj.returnProjection()
 
     def single_projection(self, pos_start, pos_end, return_midpoint=True):

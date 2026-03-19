@@ -48,7 +48,7 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
 }
 
-void Projection::makeProjection(const PointCloud &cloud, int reduction)
+void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
 
   if(!cloud.get_tree_built())
@@ -57,11 +57,10 @@ void Projection::makeProjection(const PointCloud &cloud, int reduction)
   }
 
   nfields = cloud.get_nfields();
-  ReductionMode mode = static_cast<ReductionMode>(reduction);
 
   //resize and zero result vector(s)
   proj_data.resize(ngrid * nfields);
-  memset(&proj_data[0], 0, proj_data.size() * sizeof proj_data[0]);
+  std::fill(proj_data.begin(), proj_data.end(), 0.0);
 
   if (vortrace::verbose) std::cout << "Making projection...\n";
 #ifdef TIMING_INFO

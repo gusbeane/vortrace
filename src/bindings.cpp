@@ -29,13 +29,13 @@ PYBIND11_MODULE(Cvortrace, m) {
             py::array_t<Float, py::array::c_style | py::array::forcecast>,
             py::array_t<Float, py::array::c_style | py::array::forcecast>>())
         .def("makeProjection", &Projection::makeProjection, py::call_guard<py::gil_scoped_release>(),
-             py::arg("cloud"), py::arg("reduction") = 0)
+             py::arg("cloud"), py::arg("reduction") = ReductionMode::Sum)
         .def("returnProjection", &Projection::returnProjection);
 
     py::class_<BruteProjection>(m, "BruteProjection")
         .def(py::init<std::array<size_t,3>, std::array<Float,6>>())
         .def("makeProjection", &BruteProjection::makeProjection, py::call_guard<py::gil_scoped_release>(),
-             py::arg("cloud"), py::arg("reduction") = 0)
+             py::arg("cloud"), py::arg("reduction") = ReductionMode::Sum)
         .def("saveProjection", &BruteProjection::saveProjection);
 
     py::class_<Slice>(m, "Slice")

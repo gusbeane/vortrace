@@ -23,7 +23,7 @@ class Projection
   public:
     Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end);
 
-    void makeProjection(const PointCloud &cloud, int reduction = 0);
+    void makeProjection(const PointCloud &cloud, ReductionMode reduction = ReductionMode::Sum);
     py::array_t<double> returnProjection(void) const;
 };
 

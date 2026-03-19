@@ -9,6 +9,8 @@ using Point = std::array<Float,3>;
 
 constexpr double BOX_PAD_FRACTION = 0.15;
 
+enum class ReductionMode { Sum = 0, Max = 1, Min = 2 };
+
 namespace vortrace {
   inline bool verbose = false;
 }
