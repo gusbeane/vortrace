@@ -29,10 +29,18 @@ find_package(pybind11 CONFIG REQUIRED)
 
 # --- your headers and sources --------------------
 include_directories(${CMAKE_SOURCE_DIR}/include)
-file(GLOB SRC_CPP ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
-# 1) build a real static library from your sources
-add_library(vortrace_core STATIC ${SRC_CPP})
+set(CORE_CPP
+  ${CMAKE_SOURCE_DIR}/src/pointcloud.cpp
+  ${CMAKE_SOURCE_DIR}/src/ray.cpp
+  ${CMAKE_SOURCE_DIR}/src/projection.cpp
+  ${CMAKE_SOURCE_DIR}/src/brute_projection.cpp
+  ${CMAKE_SOURCE_DIR}/src/slice.cpp
+)
+
+# 1) build a real static library from core sources (excludes bindings)
+add_library(vortrace_core STATIC ${CORE_CPP})
+set_target_properties(vortrace_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(vortrace_core PUBLIC
   ${CMAKE_SOURCE_DIR}/include
 )
@@ -50,8 +58,8 @@ if(OpenMP_CXX_FOUND)
 endif()
 
 
-# --- build the Python extension ------------------
-pybind11_add_module(Cvortrace ${SRC_CPP})
+# --- build the Python extension from bindings only --
+pybind11_add_module(Cvortrace ${CMAKE_SOURCE_DIR}/src/bindings.cpp)
 
 # Build the extension directly into the vortrace package so that
 # `from .Cvortrace import …` just works in‑place.
