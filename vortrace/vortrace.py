@@ -55,19 +55,20 @@ class ProjectionCloud:
         'min': ReductionMode.Min,
     }
 
-    def __init__(self, pos, dens, boundbox=None):
+    def __init__(self, pos, fields, boundbox=None):
         # Store original data
         self.pos_orig = np.array(pos)
-        self.dens_orig = np.array(dens)
+        self.fields_orig = np.array(fields)
 
-        dens_array = np.array(dens)
+        fields_array = np.array(fields)
         # Determine number of fields
-        if dens_array.ndim == 1:
+        if fields_array.ndim == 1:
             self._nfields = 1
-        elif dens_array.ndim == 2:
-            self._nfields = dens_array.shape[1]
+        elif fields_array.ndim == 2:
+            self._nfields = fields_array.shape[1]
         else:
-            raise ValueError("dens must be 1D (npart,) or 2D (npart, nfields)")
+            raise ValueError(
+                "fields must be 1D (npart,) or 2D (npart, nfields)")
 
         if boundbox is None:
             boundbox = [
@@ -102,18 +103,18 @@ class ProjectionCloud:
                 (pos_array[:, 1] >= ymin) & (pos_array[:, 1] <= ymax) &
                 (pos_array[:, 2] >= zmin) & (pos_array[:, 2] <= zmax))
 
-        npart_orig = dens_array.shape[0]
+        npart_orig = fields_array.shape[0]
 
         # Apply the mask to filter particles
         self.pos = pos_array[mask]
-        self.dens = dens_array[mask]
+        self.fields = fields_array[mask]
         self.orig_ids = np.arange(npart_orig)[mask]
 
         _log.info("Applied bounding box filter: %d -> %d particles",
-                  npart_orig, self.dens.shape[0])
+                  npart_orig, self.fields.shape[0])
 
         self._cloud = PointCloud()
-        self._cloud.loadPoints(self.pos, self.dens, boundbox)
+        self._cloud.loadPoints(self.pos, self.fields, boundbox)
         self._cloud.buildTree()
 
     def _prepare_array_for_backend(self, arr):
@@ -298,17 +299,16 @@ class ProjectionCloud:
 
         # Validation: check that column values are consistent with segments
         if self._nfields == 1:
-            # scalar dens for backward compat
-            dens_field = self.dens[cell_ids]
+            field_vals = self.fields[cell_ids]
         else:
-            # dens is 2D: (npart, nfields); index first field for validation
-            dens_field = self.dens[cell_ids, 0]
+            # fields is 2D: (npart, nfields); index first field for validation
+            field_vals = self.fields[cell_ids, 0]
 
         if not np.isclose(col_vals[0],
-                          np.sum(dens_field * ds_vals)):
+                          np.sum(field_vals * ds_vals)):
             raise ValueError(f"extracted ray cells and ds does not give "
                              f"consistent density: {col_vals[0]} != "
-                             f"{np.sum(dens_field * ds_vals)}")
+                             f"{np.sum(field_vals * ds_vals)}")
 
         # Return scalar dens for backward compat when nfields == 1
         dens_out = col_vals[0] if self._nfields == 1 else col_vals

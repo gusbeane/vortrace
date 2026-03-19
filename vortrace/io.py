@@ -126,7 +126,7 @@ def load_grid(filename):
 def save_cloud(filename, cloud, *, fmt="npz"):
     """Save a :class:`~vortrace.vortrace.ProjectionCloud` to disk.
 
-    Only the data needed to reconstruct the cloud (positions, densities,
+    Only the data needed to reconstruct the cloud (positions, fields,
     and bounding box) are stored.  The KD-tree is rebuilt on load.
 
     Parameters
@@ -139,17 +139,17 @@ def save_cloud(filename, cloud, *, fmt="npz"):
         File format.
     """
     pos = np.asarray(cloud.pos_orig)
-    dens = np.asarray(cloud.dens_orig)
+    fields = np.asarray(cloud.fields_orig)
     boundbox = np.asarray(cloud.boundbox)
 
     if fmt == "npz":
-        np.savez(filename, pos=pos, dens=dens, boundbox=boundbox)
+        np.savez(filename, pos=pos, fields=fields, boundbox=boundbox)
 
     elif fmt == "hdf5":
         h5py = _import_h5py()
         with h5py.File(filename, "w") as f:
             f.create_dataset("pos", data=pos)
-            f.create_dataset("dens", data=dens)
+            f.create_dataset("fields", data=fields)
             f.attrs["boundbox"] = boundbox
     else:
         raise ValueError(f"Unknown format: {fmt!r}. Use 'npz' or 'hdf5'.")
@@ -177,13 +177,13 @@ def load_cloud(filename):
     if fmt == "npz":
         with np.load(filename, allow_pickle=False) as npz:
             pos = npz["pos"]
-            dens = npz["dens"]
+            fields = npz["fields"]
             boundbox = npz["boundbox"]
     else:
         h5py = _import_h5py()
         with h5py.File(filename, "r") as f:
             pos = f["pos"][:]
-            dens = f["dens"][:]
+            fields = f["fields"][:]
             boundbox = f.attrs["boundbox"]
 
-    return ProjectionCloud(pos, dens, boundbox=list(boundbox))
+    return ProjectionCloud(pos, fields, boundbox=list(boundbox))

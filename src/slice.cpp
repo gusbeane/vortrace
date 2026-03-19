@@ -52,7 +52,7 @@ void Slice::makeSlice(const PointCloud &cloud)
       query_pt[1] = start_y + deltay * j;
       query_pt[2] = depth;
       result_idx = cloud.queryTree(query_pt);
-      dens_slice[i * npix_y + j] = cloud.get_dens(result_idx);
+      dens_slice[i * npix_y + j] = cloud.get_field(result_idx, 0);
     }
 #ifdef TIMING_INFO
     auto stop = std::chrono::high_resolution_clock::now();
