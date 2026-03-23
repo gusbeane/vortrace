@@ -146,48 +146,8 @@ size_t PointCloud::queryTree(const Point &query_pt) const
   return result;
 }
 
-size_t PointCloud::checkMode(const Point &query_pt, size_t ctree_id,
-                           size_t ntree_id, int *mode) const
+void PointCloud::queryTreeK(const Point &query_pt, size_t k,
+                            size_t *results, Float *r2) const
 {
-  size_t result[8];
-  Float r2[8]; //
-
-  // Set mode to initially be 3
-  // We want it set to be
-  //   0: if we are on an edge between ctree_id and ntree_id
-  //   1: if we are on an edge between ctree_id and another cell(s)
-  //   2: if we are on an edge between ntree_id and another cell(s)
-  //   3: if we are not on an edge between either ctree_id and ntree_id
-
-  *mode = 3;
-  int i = 1;
-
-  tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
-
-  if(result[0]==ctree_id)
-    *mode -= 2;
-  if(result[0]==ntree_id)
-    *mode -= 1;
-
-  while(i < 8)
-  {
-    if(r2[i]-r2[0] <= TOLERANCE)
-    {
-      if(result[i]==ctree_id)
-        *mode -= 2;
-      if(result[i]==ntree_id)
-        *mode -= 1;
-
-      if(*mode == 0)
-        break;
-
-      i += 1;
-      tree->knnSearch(query_pt.data(), i+1, &result[0], &r2[0]);
-    }
-    else{
-      break;
-    }
-  }
-
-  return result[0];
+  tree->knnSearch(query_pt.data(), k, results, r2);
 }

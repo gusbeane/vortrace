@@ -1,4 +1,4 @@
-build/
+build*/
 vortrace.cpython-37m-darwin.so
 vortrace.egg-info/
 __pycache__/
@@ -17,3 +17,4 @@ run/
 .DS_Store
 .cache/
 docs/_build/
+pytest-of-abeane/
