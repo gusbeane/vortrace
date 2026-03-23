@@ -20,4 +20,5 @@ it's easy to get started.
    installation
    QuickStart
    algorithm
+   edgecases
    api
