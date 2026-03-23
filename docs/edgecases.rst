@@ -48,20 +48,19 @@ the ray crosses a Voronoi edge where three or more cells meet), the 3-NN
 cannot unambiguously identify which cell lies on the ray.  ``vortrace``
 resolves this in two stages.
 
-**Stage 1 — perturb along the ray.**  The split point is perturbed by a small
-epsilon backward along the ray (toward ``c``'s side), and the nearest
-neighbour is queried at that perturbed position.  This finds whichever
-intermediate cell the ray actually passes through just before the split point.
-If the result is unambiguous (a single clear nearest that is neither ``c`` nor
-``n``), it is accepted.  Otherwise the same perturbation is tried forward
-along the ray (toward ``n``'s side), giving the cell just after the split
-point.
+The algorithm finds the intermediate cell on **each side** independently:
 
-**Stage 2 — perpendicular cycling (fallback).**  If neither directional
-perturbation resolves unambiguously — which happens when the ray lies along a
-Voronoi face so that perturbing along the ray stays on the boundary — the
-algorithm falls back to cycling through perturbation directions perpendicular
-to the ray.  The directions have the form
+**Stage 1 — perturb along the ray.**  The split point is perturbed by a small
+epsilon backward along the ray (toward ``c``'s side) to find the cell just
+before the split point (``sc``), and forward (toward ``n``'s side) to find the
+cell just after (``sn``).  Each perturbation is accepted only if the result is
+unambiguous (a single clear nearest that is neither ``c`` nor ``n``).
+
+**Stage 2 — perpendicular cycling (per-side fallback).**  If the along-ray
+perturbation for a given side is ambiguous — which happens when the ray lies
+along a Voronoi face on that side — the algorithm falls back to perpendicular
+cycling *for that side only*.  The other side may have already resolved via
+Stage 1.  The perpendicular directions have the form
 ``cross(dir, a*w1 + b*w2 + c*w3)`` for integer coefficients ``(a, b, c)``
 and base vectors::
 
@@ -73,6 +72,10 @@ The cross product with the ray direction keeps the perturbation perpendicular
 to the ray, while the combinatorial cycling through coefficients ensures that
 a sufficiently diverse set of directions is explored.  The first perturbation
 that lands in a cell other than ``c`` or ``n`` is accepted.
+
+If ``sc == sn`` (the same cell on both sides), a single intermediate point is
+inserted.  If ``sc != sn``, both are inserted at the split-point position and
+the zero-width segment between them is skipped during traversal.
 
 Parallel bisectors
 ------------------

@@ -223,6 +223,17 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
     if (++iteration > MAX_ITERATIONS)
       throw std::runtime_error("Ray integration exceeded maximum iteration count");
 
+    // Skip zero-width segments (arise when Case 1a inserts two different
+    // intermediate cells at the same split-point position)
+    if (pts[next].s - pts[current].s < 1e-14) {
+      current = next;
+      ctree_id = pts[current].tree_id;
+      next = pts[current].next;
+      if (next == SIZE_MAX) not_done = 0;
+      else ntree_id = pts[next].tree_id;
+      continue;
+    }
+
     // Find the split point (handles parallel bisectors internally)
     s = findSplitPointDistance(cloud, ctree_id, ntree_id,
                                pts[current].s, pts[next].s);
@@ -307,44 +318,71 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
     else {
       // Case 1/1a: all equidistant cells are non-{c,n}.
       // A third cell lies between c and n — insert it.
-      size_t insert_id;
       if (r2_vals[0] + TOLERANCE < r2_vals[1]) {
         // Case 1: single cell strictly closest.
-        insert_id = ids[0];
+        pts.emplace_back(ids[0], next, s);
+        next = pts.size() - 1;
+        pts[current].next = next;
+        ntree_id = ids[0];
       } else {
         // Case 1a: multiple equidistant cells closer than c/n.
-        // Perturb the split point along the ray toward c's side (-dir)
-        // and n's side (+dir) to find which cell the ray actually passes
-        // through on each side of the degenerate point.
-        // Fall back to perpendicular cycling only if neither resolves
-        // unambiguously (e.g. the ray lies along a Voronoi face).
-        insert_id = SIZE_MAX;
-        Point perturbed;
-        for (int attempt = 0; attempt < 2 && insert_id == SIZE_MAX; attempt++) {
-          Float sign = (attempt == 0) ? -1.0 : 1.0;
+        // Find the intermediate cell on each side of the split point
+        // by perturbing along the ray: backward (-dir) for c's side,
+        // forward (+dir) for n's side.  Each side independently falls
+        // back to perpendicular cycling if the along-ray perturbation
+        // is ambiguous (e.g. the ray lies along a face on that side).
+        size_t sc_cell = SIZE_MAX, sn_cell = SIZE_MAX;
+
+        // Helper: perturb pos by sign*eps*dir, return cell if unambiguous
+        auto tryAlongRay = [&](Float sign) -> size_t {
+          Point perturbed;
           for (int j = 0; j < 3; j++)
             perturbed[j] = pos[j] + sign * PERTURBATION_EPS * dir[j];
-
-          // Accept only if the result is unambiguous (single clear nearest)
-          size_t p_ids[2];
-          Float p_r2[2];
+          size_t p_ids[2]; Float p_r2[2];
           cloud.queryTreeK(perturbed, 2, p_ids, p_r2);
-
           if (p_r2[0] + TOLERANCE < p_r2[1] &&
-              p_ids[0] != ctree_id && p_ids[0] != ntree_id) {
-            insert_id = p_ids[0];
-          }
+              p_ids[0] != ctree_id && p_ids[0] != ntree_id)
+            return p_ids[0];
+          return SIZE_MAX;
+        };
+
+        // c-side: perturb backward along ray
+        sc_cell = tryAlongRay(-1.0);
+        if (sc_cell == SIZE_MAX) {
+          Point perturbed_c;
+          for (int j = 0; j < 3; j++)
+            perturbed_c[j] = pos[j] - PERTURBATION_EPS * dir[j];
+          sc_cell = perpPerturbToFindCell(perturbed_c, cloud, ctree_id, ntree_id);
         }
 
-        // Unlucky! The ray lies along a face, and so we need to pick a perpendicular direction to perturb along.
-        if (insert_id == SIZE_MAX) {
-          insert_id = perpPerturbToFindCell(perturbed, cloud, ctree_id, ntree_id);
+        // n-side: perturb forward along ray
+        sn_cell = tryAlongRay(1.0);
+        if (sn_cell == SIZE_MAX) {
+          Point perturbed_n;
+          for (int j = 0; j < 3; j++)
+            perturbed_n[j] = pos[j] + PERTURBATION_EPS * dir[j];
+          sn_cell = perpPerturbToFindCell(perturbed_n, cloud, ctree_id, ntree_id);
+        }
+
+        if (sc_cell == sn_cell) {
+          // Same cell on both sides — single insertion
+          pts.emplace_back(sc_cell, next, s);
+          next = pts.size() - 1;
+          pts[current].next = next;
+          ntree_id = sc_cell;
+        } else {
+          // Different cells on each side — insert both.
+          // Linked list: current(c) → sc_cell(s) → sn_cell(s) → next(n)
+          // The zero-width segment [sc_cell, sn_cell] will be skipped.
+          size_t sn_idx = pts.size();
+          pts.emplace_back(sn_cell, next, s);
+          size_t sc_idx = pts.size();
+          pts.emplace_back(sc_cell, sn_idx, s);
+          pts[current].next = sc_idx;
+          next = sc_idx;
+          ntree_id = sc_cell;
         }
       }
-      pts.emplace_back(insert_id, next, s);
-      next = pts.size() - 1;
-      pts[current].next = next;
-      ntree_id = insert_id;
     }
   } //while()
 }
