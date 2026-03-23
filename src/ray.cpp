@@ -7,7 +7,7 @@
 #define TOLERANCE 1E-9
 #define PARALLEL_BISECTOR_TOL 1E-12
 #define MAX_ITERATIONS 100000
-#define PERTURBATION_EPS 1E-10
+#define PERTURBATION_EPS (2 * TOLERANCE)
 #define MAX_PERTURBATION_CYCLES 1000
 
 Ray::Ray(const Point &start, const Point &end)
@@ -104,7 +104,7 @@ Float Ray::findSplitPointDistance(const PointCloud &cloud,
   throw std::runtime_error("Binary search did not converge for parallel bisector");
 }
 
-size_t Ray::perturbToFindCell(const Point &pos, const PointCloud &cloud,
+size_t Ray::perpPerturbToFindCell(const Point &pos, const PointCloud &cloud,
                                size_t exclude1, size_t exclude2) const
 {
   // Base directions for generating perturbation candidates.
@@ -312,9 +312,34 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
         // Case 1: single cell strictly closest.
         insert_id = ids[0];
       } else {
-        // Case 1a: multiple equidistant cells.
-        // Perturb perpendicular to the ray to break the tie.
-        insert_id = perturbToFindCell(pos, cloud, ctree_id, ntree_id);
+        // Case 1a: multiple equidistant cells closer than c/n.
+        // Perturb the split point along the ray toward c's side (-dir)
+        // and n's side (+dir) to find which cell the ray actually passes
+        // through on each side of the degenerate point.
+        // Fall back to perpendicular cycling only if neither resolves
+        // unambiguously (e.g. the ray lies along a Voronoi face).
+        insert_id = SIZE_MAX;
+        Point perturbed;
+        for (int attempt = 0; attempt < 2 && insert_id == SIZE_MAX; attempt++) {
+          Float sign = (attempt == 0) ? -1.0 : 1.0;
+          for (int j = 0; j < 3; j++)
+            perturbed[j] = pos[j] + sign * PERTURBATION_EPS * dir[j];
+
+          // Accept only if the result is unambiguous (single clear nearest)
+          size_t p_ids[2];
+          Float p_r2[2];
+          cloud.queryTreeK(perturbed, 2, p_ids, p_r2);
+
+          if (p_r2[0] + TOLERANCE < p_r2[1] &&
+              p_ids[0] != ctree_id && p_ids[0] != ntree_id) {
+            insert_id = p_ids[0];
+          }
+        }
+
+        // Unlucky! The ray lies along a face, and so we need to pick a perpendicular direction to perturb along.
+        if (insert_id == SIZE_MAX) {
+          insert_id = perpPerturbToFindCell(perturbed, cloud, ctree_id, ntree_id);
+        }
       }
       pts.emplace_back(insert_id, next, s);
       next = pts.size() - 1;

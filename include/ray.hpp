@@ -58,7 +58,7 @@ class Ray
 
     // Perturb the split point in cycling directions (cross(dir, wN))
     // to find a cell that is neither exclude1 nor exclude2.
-    size_t perturbToFindCell(const Point &pos, const PointCloud &cloud,
+    size_t perpPerturbToFindCell(const Point &pos, const PointCloud &cloud,
                              size_t exclude1, size_t exclude2) const;
 
     void integrate(const PointCloud &cloud, ReductionMode mode = ReductionMode::Sum);
