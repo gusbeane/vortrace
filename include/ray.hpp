@@ -46,9 +46,12 @@ class Ray
 
     Ray(const Point &start, const Point &end);
 
-    // Find the distance (from pos_start) of the point splitting cells id1
-    // and id2.  When the bisector is parallel to the ray, falls back to a
-    // binary search along [s_lo, s_hi] and emits a warning.
+    // Analytic bisector-ray intersection distance.  Returns Float::max()
+    // sentinel when the bisector is parallel to the ray.
+    Float findSplitPointDistance(const Point &pos1, const Point &pos2);
+
+    // Full version: tries the analytic intersection first, then falls back
+    // to a binary search along [s_lo, s_hi] when the bisector is parallel.
     Float findSplitPointDistance(const PointCloud &cloud,
                                  size_t id1, size_t id2,
                                  Float s_lo, Float s_hi);

@@ -33,12 +33,9 @@ Ray::Ray(const Point &start, const Point &end)
 
 }
 
-Float Ray::findSplitPointDistance(const PointCloud &cloud,
-                                  size_t id1, size_t id2,
-                                  Float s_lo, Float s_hi)
+//Find the distance (from pos_start) of the point splitting points pos1 and pos2
+Float Ray::findSplitPointDistance(const Point &pos1, const Point &pos2)
 {
-  Point pos1 = cloud.get_pt(id1);
-  Point pos2 = cloud.get_pt(id2);
   Point ppl, norm;
 
   //The (unnormalised) plane normal
@@ -54,12 +51,26 @@ Float Ray::findSplitPointDistance(const PointCloud &cloud,
   Float norm_dot_ppl = norm[0] * ppl[0] + norm[1] * ppl[1] + norm[2] * ppl[2];
   Float norm_dot_dir = norm[0] * dir[0] + norm[1] * dir[1] + norm[2] * dir[2];
 
-  // Normal case: analytic intersection of ray with bisector plane
-  if (std::abs(norm_dot_dir) >= PARALLEL_BISECTOR_TOL)
-    return norm_dot_ppl / norm_dot_dir;
+  // Guard: bisector parallel to ray — no intersection.
+  if (std::abs(norm_dot_dir) < PARALLEL_BISECTOR_TOL)
+    return std::numeric_limits<Float>::max();
 
-  // Parallel bisector: the ray runs along (or very near) the bisector
-  // plane of id1 and id2.  Binary search along [s_lo, s_hi] to find
+  return norm_dot_ppl / norm_dot_dir;
+}
+
+// Full version: tries analytic intersection, falls back to binary search
+// along [s_lo, s_hi] when the bisector is parallel to the ray.
+Float Ray::findSplitPointDistance(const PointCloud &cloud,
+                                  size_t id1, size_t id2,
+                                  Float s_lo, Float s_hi)
+{
+  Float s = findSplitPointDistance(cloud.get_pt(id1), cloud.get_pt(id2));
+
+  // If the analytic result is valid, return it directly
+  if (s < std::numeric_limits<Float>::max() * 0.5)
+    return s;
+
+  // Parallel bisector: binary search along [s_lo, s_hi] to find
   // where the cell identity changes or to locate an intermediate cell.
   std::cerr << "Warning: parallel bisector detected between cells "
             << id1 << " and " << id2 << std::endl;
