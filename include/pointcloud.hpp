@@ -38,7 +38,7 @@ class PointCloud
     void buildTree();
 
     size_t queryTree(const Point &query_pt) const;
-    size_t checkMode(const Point &query_pt, size_t ctree_id, size_t ntree_id, int *mode) const;
+    void queryTreeK(const Point &query_pt, size_t k, size_t *results, Float *r2) const;
 
     //Getters, we need some read-only access to data
     std::array<Float,6> get_subbox() const {return subbox;}
