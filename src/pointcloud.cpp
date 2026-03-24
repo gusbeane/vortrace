@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 #define TOLERANCE 1E-9
 
@@ -57,6 +58,27 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
   pts.clear();
   fields.clear();
   orig_ids.clear();
+
+  // Warn if any cells are small enough to cause tolerance issues
+  {
+    py::buffer_info buf_vol_check = vol.request();
+    if (buf_vol_check.size > 0) {
+      auto *vptr = static_cast<double *>(buf_vol_check.ptr);
+      double min_vol = std::numeric_limits<double>::max();
+      for (ssize_t i = 0; i < buf_vol_check.size; i++) {
+        if (vptr[i] > 0 && vptr[i] < min_vol) min_vol = vptr[i];
+      }
+      if (min_vol < std::numeric_limits<double>::max()) {
+        double min_radius = std::cbrt(3.0 * min_vol / (4.0 * M_PI));
+        if (min_radius < 1e-6) {
+          PyErr_WarnEx(PyExc_UserWarning,
+            "Some cells have radii smaller than 1e-6, which approaches the "
+            "internal ray-tracing tolerance (1e-9). Results may be unreliable "
+            "for very small cells. Consider rescaling your coordinate system.", 1);
+        }
+      }
+    }
+  }
 
   if (!periodic) {
     // Compute padding
