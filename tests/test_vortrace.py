@@ -41,3 +41,32 @@ class TestProjection:
 
         pc.single_projection(np.array([0, 0, 0]),
                              np.array([box_size, box_size, box_size]))
+
+def make_cubic_lattice(n=5):
+    """Create an n x n x n cubic lattice point cloud."""
+    coords = np.arange(n, dtype=np.float64)
+    xx, yy, zz = np.meshgrid(coords, coords, coords, indexing='ij')
+    pos = np.column_stack([xx.ravel(), yy.ravel(), zz.ravel()])
+    fields = np.ones(len(pos), dtype=np.float64)
+    vol = np.ones(len(pos), dtype=np.float64)
+    boundbox = [-0.5, n - 0.5, -0.5, n - 0.5, -0.5, n - 0.5]
+    return pos, fields, vol, boundbox
+
+class TestSameCell:
+    def test_same_cell(self):
+        """Test that rays starting and ending in the same cell are handled correctly.
+
+        For a uniform field, the integral should equal the ray length."""
+
+        pos, fields, vol, bb = make_cubic_lattice()
+        pc = vt.ProjectionCloud(pos, fields, boundbox=bb, vol=vol)
+
+        start = [0.5, 0.5, 0.5]
+        end = [0.6, 0.6, 0.6]
+
+        result = pc.single_projection(np.array(start), np.array(end))[0]
+        expected = np.linalg.norm(np.array(end) - np.array(start))
+
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+        

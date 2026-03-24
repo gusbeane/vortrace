@@ -223,11 +223,10 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
   if(pts[0].tree_id == pts[1].tree_id)
     {
       if (!cloud.get_periodic()) {
-        throw std::runtime_error(
-          "Start and end point are in the same cell. "
-          "Start point tree_id: " + std::to_string(pts[0].tree_id) +
-          ", End point tree_id: " + std::to_string(pts[1].tree_id)
-        );
+        // Start and end are in the same cell, so we are done.
+        ds = pts[1].s - pts[0].s;
+        accumulate(pts[0].tree_id, ds);
+        return;
       }
 
       // Periodic: bisect along the ray to find a point in a different cell.
