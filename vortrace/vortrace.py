@@ -32,7 +32,7 @@ class ProjectionCloud:
         'min': ReductionMode.Min,
     }
 
-    def __init__(self, pos, fields, boundbox=None, vol=None, periodic=False):
+    def __init__(self, pos, fields, boundbox=None, vol=None, *, periodic=False):
         """Create a ProjectionCloud from particle data.
 
         Parameters
