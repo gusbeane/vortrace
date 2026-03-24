@@ -32,7 +32,7 @@ class ProjectionCloud:
         'min': ReductionMode.Min,
     }
 
-    def __init__(self, pos, fields, boundbox=None, vol=None):
+    def __init__(self, pos, fields, boundbox=None, vol=None, periodic=False):
         """Create a ProjectionCloud from particle data.
 
         Parameters
@@ -47,11 +47,16 @@ class ProjectionCloud:
         vol : array_like of shape (N,), optional
             Cell volumes.  When provided, the C++ backend uses them
             for adaptive padding of the kDTree search radius.
+        periodic : bool, optional
+            If *True*, enable periodic boundary conditions.  The
+            bounding box defines the periodic domain and no spatial
+            filtering is applied (all particles are loaded).
         """
         # Store original data
         self.pos_orig = np.array(pos)
         self.fields_orig = np.array(fields)
         self.vol_orig = np.array(vol) if vol is not None else None
+        self.periodic = periodic
 
         fields_array = self.fields_orig
         # Determine number of fields
@@ -75,10 +80,10 @@ class ProjectionCloud:
         self._cloud = PointCloud()
         if self.vol_orig is not None:
             self._cloud.loadPoints(self.pos_orig, self.fields_orig,
-                                   boundbox, self.vol_orig)
+                                   boundbox, self.vol_orig, periodic)
         else:
             self._cloud.loadPoints(self.pos_orig, self.fields_orig,
-                                   boundbox)
+                                   boundbox, periodic=periodic)
         self._cloud.buildTree()
 
         # Get filtered index mapping from C++

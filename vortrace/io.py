@@ -142,8 +142,11 @@ def save_cloud(filename, cloud, *, fmt="npz"):
     fields = np.asarray(cloud.fields_orig)
     boundbox = np.asarray(cloud.boundbox)
 
+    periodic = getattr(cloud, 'periodic', False)
+
     if fmt == "npz":
-        arrays = {"pos": pos, "fields": fields, "boundbox": boundbox}
+        arrays = {"pos": pos, "fields": fields, "boundbox": boundbox,
+                  "periodic": np.bool_(periodic)}
         if cloud.vol_orig is not None:
             arrays["vol"] = np.asarray(cloud.vol_orig)
         np.savez(filename, **arrays)
@@ -154,6 +157,7 @@ def save_cloud(filename, cloud, *, fmt="npz"):
             f.create_dataset("pos", data=pos)
             f.create_dataset("fields", data=fields)
             f.attrs["boundbox"] = boundbox
+            f.attrs["periodic"] = periodic
             if cloud.vol_orig is not None:
                 f.create_dataset("vol", data=np.asarray(cloud.vol_orig))
     else:
@@ -185,6 +189,7 @@ def load_cloud(filename):
             fields = npz["fields"]
             boundbox = npz["boundbox"]
             vol = npz["vol"] if "vol" in npz else None
+            periodic = bool(npz["periodic"]) if "periodic" in npz else False
     else:
         h5py = _import_h5py()
         with h5py.File(filename, "r") as f:
@@ -192,6 +197,7 @@ def load_cloud(filename):
             fields = f["fields"][:]
             boundbox = f.attrs["boundbox"]
             vol = f["vol"][:] if "vol" in f else None
+            periodic = bool(f.attrs.get("periodic", False))
 
     return ProjectionCloud(pos, fields, boundbox=list(boundbox),
-                           vol=vol)
+                           vol=vol, periodic=periodic)
