@@ -64,7 +64,27 @@ Float Ray::findSplitPointDistance(const PointCloud &cloud,
                                   size_t id1, size_t id2,
                                   Float s_lo, Float s_hi)
 {
-  Float s = findSplitPointDistance(cloud.get_pt(id1), cloud.get_pt(id2));
+  Point pos1 = cloud.get_pt(id1);
+  Point pos2 = cloud.get_pt(id2);
+
+  if (cloud.get_periodic()) {
+    // Minimum image: wrap both generators to nearest image of the
+    // segment midpoint on the ray, so the bisector is the correct
+    // periodic Voronoi boundary.
+    Float s_ref = 0.5 * (s_lo + s_hi);
+    Point box_sz = cloud.get_box_size();
+    for (int d = 0; d < 3; d++) {
+      Float ref = pos_start[d] + s_ref * dir[d];
+      Float diff1 = pos1[d] - ref;
+      if (diff1 >  box_sz[d] / 2) pos1[d] -= box_sz[d];
+      else if (diff1 < -box_sz[d] / 2) pos1[d] += box_sz[d];
+      Float diff2 = pos2[d] - ref;
+      if (diff2 >  box_sz[d] / 2) pos2[d] -= box_sz[d];
+      else if (diff2 < -box_sz[d] / 2) pos2[d] += box_sz[d];
+    }
+  }
+
+  Float s = findSplitPointDistance(pos1, pos2);
 
   // If the analytic result is valid, return it directly
   if (s < std::numeric_limits<Float>::max() * 0.5)
@@ -199,20 +219,50 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
   pts[0].tree_id = cloud.queryTree(pos_start);
   pts[1].tree_id = cloud.queryTree(pos_end);
 
-  //If tree_id matches, in same cell already so integrate and stop
+  //If tree_id matches, in same cell already
   if(pts[0].tree_id == pts[1].tree_id)
     {
-      throw std::runtime_error(
-        "Start and end point are in the same cell. "
-        "Start point tree_id: " + std::to_string(pts[0].tree_id) +
-        ", End point tree_id: " + std::to_string(pts[1].tree_id)
-      );
+      if (!cloud.get_periodic()) {
+        throw std::runtime_error(
+          "Start and end point are in the same cell. "
+          "Start point tree_id: " + std::to_string(pts[0].tree_id) +
+          ", End point tree_id: " + std::to_string(pts[1].tree_id)
+        );
+      }
+
+      // Periodic: bisect along the ray to find a point in a different cell.
+      // Sample at dyadic fractions (1/2, 1/4, 3/4, 1/8, ...) until we
+      // find a cell boundary, then insert it into the linked list.
+      size_t start_cell = pts[0].tree_id;
+      Float total_s = pts[1].s;
+      bool found = false;
+
+      for (int level = 1; level <= 10 && !found; level++) {
+        int n = 1 << level;
+        for (int i = 1; i < n && !found; i += 2) {
+          Float mid_s = total_s * i / n;
+          Point mid_pt;
+          for (int j = 0; j < 3; j++)
+            mid_pt[j] = pos_start[j] + mid_s * dir[j];
+          size_t mid_cell = cloud.queryTree(mid_pt);
+          if (mid_cell != start_cell) {
+            pts.emplace_back(mid_cell, 1, mid_s);
+            pts[0].next = pts.size() - 1;
+            found = true;
+          }
+        }
+      }
+
+      if (!found) {
+        throw std::runtime_error(
+          "Could not find intermediate cell by bisection along periodic ray");
+      }
     }
 
   //Otherwise start integration
   current = 0;
   ctree_id = pts[current].tree_id;
-  next = 1;
+  next = pts[current].next;
   ntree_id = pts[next].tree_id;
 
   size_t iteration = 0;
