@@ -24,8 +24,13 @@ class PointCloud
     std::vector<Float> fields;  // flat, particle-major: fields[idx * nfields + f]
     std::vector<size_t> orig_ids;  // maps filtered index -> original index
 
+    bool periodic = false;
+    Point box_size = {0.0, 0.0, 0.0};
+
     bool tree_built = false;
     std::unique_ptr<my_kd_tree_t> tree;
+
+    Float minDistSqToBox(const Point &query_pt) const;
 
   public:
 
@@ -34,7 +39,8 @@ class PointCloud
     //vol is optional per-cell volumes for adaptive padding.
     void loadPoints(py::array_t<double> pos, py::array_t<double> fields_in,
                     const std::array<Float,6> newsubbox,
-                    py::array_t<double> vol = py::array_t<double>());
+                    py::array_t<double> vol = py::array_t<double>(),
+                    bool periodic = false);
     void buildTree();
 
     size_t queryTree(const Point &query_pt) const;
@@ -49,6 +55,8 @@ class PointCloud
     const std::vector<size_t>& get_orig_ids() const {return orig_ids;}
     double get_pad() const {return pad;}
     size_t get_npart() const {return npart;}
+    bool get_periodic() const {return periodic;}
+    Point get_box_size() const {return box_size;}
 
     //Required methods for nanoflann adaptor.
     inline size_t kdtree_get_point_count() const { return npart;}
