@@ -37,15 +37,21 @@ pip install ./
 Making your first projection takes only three lines if you've already prepared your coordinates (`pos`), density (`rho`), and projection parameters (`BoxSize`, `L`, `npix`):
 
 ```
-# pos and rho defined elsewhere
+# assuming pos and rho have been defined elsewhere
+# pos is a (N,3) numpy array
+# rho is a (N,) numpy array
 BoxSize = 100
 center = np.array([BoxSize]*3)/2.
+
+# define image grid. e.g., want to make a 20 kpc x 20 kpc image
 L = 20
 extent = [center[0]-L/2., center[0]+L/2., center[1]-L/2., center[1]+L/2.]
+
+# integrate through the full box along the z-axis with resolution 256^2
 bounds = [0, BoxSize]
 npix = 256
 
-# now we make the projection
+# now we make the projection. proj_xy is a (npix, npix) numpy array
 import vortrace as vt
 pc = vt.ProjectionCloud(pos, rho)
 proj_xy = pc.grid_projection(extent, npix, bounds)
