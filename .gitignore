@@ -18,3 +18,4 @@ run/
 .cache/
 docs/_build/
 pytest-of-abeane/
+.claude/
