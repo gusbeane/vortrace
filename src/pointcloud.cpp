@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 #define TOLERANCE 1E-9
 
@@ -57,6 +58,27 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
   pts.clear();
   fields.clear();
   orig_ids.clear();
+
+  // Warn if any cells are small enough to cause tolerance issues
+  {
+    py::buffer_info buf_vol_check = vol.request();
+    if (buf_vol_check.size > 0) {
+      auto *vptr = static_cast<double *>(buf_vol_check.ptr);
+      double min_vol = std::numeric_limits<double>::max();
+      for (ssize_t i = 0; i < buf_vol_check.size; i++) {
+        if (vptr[i] > 0 && vptr[i] < min_vol) min_vol = vptr[i];
+      }
+      if (min_vol < std::numeric_limits<double>::max()) {
+        double min_radius = std::cbrt(3.0 * min_vol / (4.0 * M_PI));
+        if (min_radius < 1e-6) {
+          PyErr_WarnEx(PyExc_UserWarning,
+            "Some cells have radii smaller than 1e-6, which approaches the "
+            "internal ray-tracing tolerance (1e-9). Results may be unreliable "
+            "for very small cells. Consider rescaling your coordinate system.", 1);
+        }
+      }
+    }
+  }
 
   if (!periodic) {
     // Compute padding
@@ -120,6 +142,14 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
 
     if (vortrace::verbose) std::cout << "Loading all points (periodic)...\n";
 
+    // Track particle extent for validation
+    double pmin[3] = {std::numeric_limits<double>::max(),
+                      std::numeric_limits<double>::max(),
+                      std::numeric_limits<double>::max()};
+    double pmax[3] = {std::numeric_limits<double>::lowest(),
+                      std::numeric_limits<double>::lowest(),
+                      std::numeric_limits<double>::lowest()};
+
     for(size_t i = 0; i < npart_in; i++)
     {
       Point pt;
@@ -128,10 +158,37 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
       pt[2] = pos_in_ptr[i*3 + 2];
       pts.push_back(pt);
 
+      for (int d = 0; d < 3; d++) {
+        if (pt[d] < pmin[d]) pmin[d] = pt[d];
+        if (pt[d] > pmax[d]) pmax[d] = pt[d];
+      }
+
       for(size_t f = 0; f < nfields; f++)
         fields.push_back(fields_in_ptr[i * nfields + f]);
 
       orig_ids.push_back(i);
+    }
+
+    // Error if any particles lie outside the bounding box
+    if (pmin[0] < subbox[0] || pmax[0] > subbox[1] ||
+        pmin[1] < subbox[2] || pmax[1] > subbox[3] ||
+        pmin[2] < subbox[4] || pmax[2] > subbox[5]) {
+      throw std::runtime_error(
+        "Periodic mode: some particles lie outside the bounding box. "
+        "All particles must be within the periodic domain.");
+    }
+
+    // Warn if particle extent is small relative to box size
+    const double extent_threshold = 0.6;
+    for (int d = 0; d < 3; d++) {
+      double extent = pmax[d] - pmin[d];
+      if (extent < extent_threshold * box_size[d]) {
+        PyErr_WarnEx(PyExc_UserWarning,
+          "Periodic mode: particle extent is less than 60% of the bounding "
+          "box in at least one dimension. The bounding box may be too large "
+          "for the particle distribution.", 1);
+        break;
+      }
     }
   }
 

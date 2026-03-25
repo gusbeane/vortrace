@@ -188,7 +188,8 @@ class ProjectionCloud:
         proj_obj.makeProjection(self._cloud, reduction_mode)
         return proj_obj.returnProjection()
 
-    def single_projection(self, pos_start, pos_end, return_midpoint=True):
+    def single_projection(self, pos_start, pos_end, return_midpoint=True,
+                           *, reduction='integrate'):
         """Perform projection for a single ray and return column density and
         per-segment info.
 
@@ -197,11 +198,13 @@ class ProjectionCloud:
             pos_end (array): shape (3,) or (1,3) end point.
             return_midpoint (bool, optional): if True, return midpoint of
                 each segment.
+            reduction (str): Reduction mode: ``'integrate'``/``'sum'``,
+                ``'max'``, or ``'min'``.
 
         Returns:
-            tuple: ``(dens, cell_ids, s_vals, ds_vals)``.
-            When ``nfields == 1``, *dens* is a scalar (backward compatible).
-            When ``nfields > 1``, *dens* is a 1-D array of length *nfields*.
+            tuple: ``(value, cell_ids, s_vals, ds_vals)``.
+            When ``nfields == 1``, *value* is a scalar (backward compatible).
+            When ``nfields > 1``, *value* is a 1-D array of length *nfields*.
         """
         # Allow lists/tuples as input, convert to numpy arrays for shape checks
         pos_start_np = np.asarray(pos_start)
@@ -234,11 +237,22 @@ class ProjectionCloud:
         start_vec = pos_start_c[0]
         end_vec = pos_end_c[0]
 
+        reduction_mode = self._REDUCTION_MAP.get(reduction)
+        if reduction_mode is None:
+            raise ValueError(
+                f"Unknown reduction {reduction!r}. "
+                f"Use one of {list(self._REDUCTION_MAP)}")
+
         # compute using Ray
         ray = Ray(start_vec, end_vec)
-        ray.integrate(self._cloud)
+        ray.integrate(self._cloud, reduction_mode)
 
-        col_vals = np.array(ray.get_col())  # length nfields
+        if reduction_mode == ReductionMode.Max:
+            col_vals = np.array(ray.get_max_val())
+        elif reduction_mode == ReductionMode.Min:
+            col_vals = np.array(ray.get_min_val())
+        else:
+            col_vals = np.array(ray.get_col())  # length nfields
         segments = ray.get_segments()
 
         # unpack segment info into arrays
@@ -291,18 +305,20 @@ class ProjectionCloud:
             raise ValueError('pos_start and pos_end are in the same cell')
 
         # Validation: check that column values are consistent with segments
-        # Map filtered cell_ids back to original indices for field lookup
+        # (only meaningful for Sum/integrate mode)
         orig_cell_ids = self.orig_ids[cell_ids]
-        if self._nfields == 1:
-            field_vals = self.fields_orig[orig_cell_ids]
-        else:
-            field_vals = self.fields_orig[orig_cell_ids, 0]
-
-        if not np.isclose(col_vals[0],
-                          np.sum(field_vals * ds_vals)):
-            raise ValueError(f"extracted ray cells and ds does not give "
-                             f"consistent density: {col_vals[0]} != "
-                             f"{np.sum(field_vals * ds_vals)}")
+        if reduction_mode == ReductionMode.Sum:
+            for f_idx in range(self._nfields):
+                if self._nfields == 1:
+                    field_vals = self.fields_orig[orig_cell_ids]
+                else:
+                    field_vals = self.fields_orig[orig_cell_ids, f_idx]
+                computed = np.sum(field_vals * ds_vals)
+                if not np.isclose(col_vals[f_idx], computed):
+                    raise ValueError(
+                        f"Field {f_idx}: extracted ray cells and ds does "
+                        f"not give consistent density: "
+                        f"{col_vals[f_idx]} != {computed}")
 
         # Return scalar dens for backward compat when nfields == 1
         dens_out = col_vals[0] if self._nfields == 1 else col_vals

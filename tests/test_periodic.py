@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import warnings
 from vortrace import vortrace as vt
 from vortrace.Cvortrace import PointCloud
 
@@ -147,13 +148,12 @@ class TestPeriodicNoFiltering:
     """When periodic=True, all particles should be loaded."""
 
     def test_all_particles_loaded(self):
-        """No spatial filtering in periodic mode."""
+        """No spatial filtering in periodic mode — all particles are kept."""
         box = 10.0
         rng = np.random.RandomState(99)
         pos = rng.uniform(0.0, box, size=(500, 3))
         fields = np.ones(500)
-        # Use a subbox that would normally filter out most particles
-        boundbox = [4.0, 6.0, 4.0, 6.0, 4.0, 6.0]
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
 
         cloud = PointCloud()
         cloud.loadPoints(pos, fields, boundbox, periodic=True)
@@ -194,6 +194,91 @@ class TestPeriodicRay:
 
         ray_length = np.linalg.norm(end - start)
         np.testing.assert_allclose(dens, ray_length, rtol=1e-10)
+
+
+class TestPeriodicValidation:
+    """Test periodic-mode guards for out-of-bounds and small extent."""
+
+    def test_error_if_particles_outside_box(self):
+        """Particles outside the bounding box should raise an error."""
+        box = 10.0
+        pos = np.array([[5.0, 5.0, 5.0],
+                         [5.0, 5.0, 11.0]])  # outside z
+        fields = np.ones(2)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        with pytest.raises(RuntimeError, match="outside the bounding box"):
+            vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
+
+    def test_error_if_particles_below_box(self):
+        """Particles below the bounding box lower bound should raise."""
+        box = 10.0
+        pos = np.array([[5.0, 5.0, 5.0],
+                         [-0.1, 5.0, 5.0]])  # outside x (below)
+        fields = np.ones(2)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        with pytest.raises(RuntimeError, match="outside the bounding box"):
+            vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
+
+    def test_no_error_if_particles_inside_box(self):
+        """All particles inside the box should not raise."""
+        box = 10.0
+        rng = np.random.default_rng(42)
+        pos = rng.uniform(0.1, 9.9, size=(50, 3))
+        fields = np.ones(50)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        # Should not raise
+        vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
+
+    def test_no_error_for_non_periodic_outside_box(self):
+        """Non-periodic mode should not error for particles outside box."""
+        box = 10.0
+        pos = np.array([[5.0, 5.0, 5.0],
+                         [5.0, 5.0, 15.0]])  # outside z
+        fields = np.ones(2)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        # Should not raise — non-periodic just filters
+        vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=False)
+
+    def test_warning_if_extent_small_relative_to_box(self):
+        """Warn if particles span < 60% of the box in any dimension."""
+        box = 100.0
+        # Particles clustered in a small region (extent ~10 in each dim)
+        rng = np.random.default_rng(42)
+        pos = rng.uniform(45.0, 55.0, size=(50, 3))
+        fields = np.ones(50)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
+            extent_warnings = [
+                x for x in w
+                if issubclass(x.category, UserWarning)
+                and "60%" in str(x.message)
+            ]
+            assert len(extent_warnings) >= 1
+
+    def test_no_warning_if_extent_fills_box(self):
+        """No warning when particles span most of the box."""
+        box = 10.0
+        rng = np.random.default_rng(42)
+        pos = rng.uniform(0.1, 9.9, size=(200, 3))
+        fields = np.ones(200)
+        boundbox = [0.0, box, 0.0, box, 0.0, box]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
+            extent_warnings = [
+                x for x in w
+                if issubclass(x.category, UserWarning)
+                and "60%" in str(x.message)
+            ]
+            assert len(extent_warnings) == 0
 
 
 class TestPeriodicBackwardCompat:

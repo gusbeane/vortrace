@@ -192,3 +192,65 @@ class TestWarning:
             user_warnings = [x for x in w
                              if issubclass(x.category, UserWarning)]
             assert len(user_warnings) == 0
+
+
+class TestSmallCellWarning:
+    """Test that a warning is emitted for very small cells."""
+
+    def test_warning_with_tiny_cells(self):
+        """Cells with radius < 1e-6 should trigger a warning."""
+        rng = np.random.default_rng(42)
+        pos = rng.random((50, 3)) * 100.0
+        fields = np.ones(50)
+        boundbox = [0.0, 100.0, 0.0, 100.0, 0.0, 100.0]
+        # Volumes giving radius ~ 1e-8 (well below threshold)
+        tiny_radius = 1e-8
+        vol = np.full(50, (4.0 / 3.0) * np.pi * tiny_radius**3)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ProjectionCloud(pos, fields, boundbox=boundbox, vol=vol)
+            small_cell_warnings = [
+                x for x in w
+                if issubclass(x.category, UserWarning)
+                and "1e-6" in str(x.message)
+            ]
+            assert len(small_cell_warnings) >= 1
+
+    def test_no_warning_with_normal_cells(self):
+        """Cells with normal radii should not trigger the small-cell warning."""
+        rng = np.random.default_rng(42)
+        pos = rng.random((50, 3)) * 100.0
+        fields = np.ones(50)
+        vol = np.ones(50) * 10.0  # radius ~ 1.34, well above threshold
+        boundbox = [0.0, 100.0, 0.0, 100.0, 0.0, 100.0]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ProjectionCloud(pos, fields, boundbox=boundbox, vol=vol)
+            small_cell_warnings = [
+                x for x in w
+                if issubclass(x.category, UserWarning)
+                and "1e-6" in str(x.message)
+            ]
+            assert len(small_cell_warnings) == 0
+
+    def test_warning_with_tiny_cells_periodic(self):
+        """Small cell warning fires in periodic mode too."""
+        rng = np.random.default_rng(42)
+        pos = rng.random((50, 3)) * 10.0
+        fields = np.ones(50)
+        boundbox = [0.0, 10.0, 0.0, 10.0, 0.0, 10.0]
+        tiny_radius = 1e-8
+        vol = np.full(50, (4.0 / 3.0) * np.pi * tiny_radius**3)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ProjectionCloud(pos, fields, boundbox=boundbox, vol=vol,
+                            periodic=True)
+            small_cell_warnings = [
+                x for x in w
+                if issubclass(x.category, UserWarning)
+                and "1e-6" in str(x.message)
+            ]
+            assert len(small_cell_warnings) >= 1

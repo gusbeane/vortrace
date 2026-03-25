@@ -218,6 +218,75 @@ class TestReduction:
         np.testing.assert_allclose(dat[:, :, 1], 2 * dat[:, :, 0], rtol=1e-12)
 
 
+class TestSingleProjectionReduction:
+    """Test single_projection with different reduction modes."""
+
+    def read_arepo_snap(self, snapname):
+        f = h5.File(snapname, mode='r')
+        pos = np.array(f['PartType0']['Coordinates'])
+        dens = np.array(f['PartType0']['Density'])
+        box_size = f['Parameters'].attrs['BoxSize']
+        f.close()
+        return pos, dens, box_size
+
+    def test_single_projection_max_reduction(self):
+        """single_projection with max reduction."""
+        snapname = 'tests/test_data/galaxy_interaction.hdf5'
+        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pc = vt.ProjectionCloud(
+            pos, dens,
+            boundbox=[0., box_size, 0., box_size, 0., box_size])
+        start = np.array([box_size / 2., box_size / 2., 0.1])
+        end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
+
+        max_val, cell_ids, _, _ = pc.single_projection(
+            start, end, reduction='max')
+        # Max should equal max of field values in intersected cells
+        np.testing.assert_allclose(max_val, np.max(dens[cell_ids]))
+
+    def test_single_projection_min_reduction(self):
+        """single_projection with min reduction."""
+        snapname = 'tests/test_data/galaxy_interaction.hdf5'
+        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pc = vt.ProjectionCloud(
+            pos, dens,
+            boundbox=[0., box_size, 0., box_size, 0., box_size])
+        start = np.array([box_size / 2., box_size / 2., 0.1])
+        end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
+
+        min_val, cell_ids, _, _ = pc.single_projection(
+            start, end, reduction='min')
+        np.testing.assert_allclose(min_val, np.min(dens[cell_ids]))
+
+    def test_single_projection_max_multifield(self):
+        """single_projection max with multi-field: 2*dens max = 2 * dens max."""
+        snapname = 'tests/test_data/galaxy_interaction.hdf5'
+        pos, dens, box_size = self.read_arepo_snap(snapname)
+        fields = np.column_stack([dens, 2 * dens])
+        pc = vt.ProjectionCloud(
+            pos, fields,
+            boundbox=[0., box_size, 0., box_size, 0., box_size])
+        start = np.array([box_size / 2., box_size / 2., 0.1])
+        end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
+
+        max_vals, _, _, _ = pc.single_projection(
+            start, end, reduction='max')
+        assert max_vals.shape == (2,)
+        np.testing.assert_allclose(max_vals[1], 2 * max_vals[0], rtol=1e-12)
+
+    def test_single_projection_invalid_reduction(self):
+        """Invalid reduction string should raise ValueError."""
+        snapname = 'tests/test_data/galaxy_interaction.hdf5'
+        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pc = vt.ProjectionCloud(
+            pos, dens,
+            boundbox=[0., box_size, 0., box_size, 0., box_size])
+        start = np.array([box_size / 2., box_size / 2., 0.1])
+        end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
+        with pytest.raises(ValueError, match="Unknown reduction"):
+            pc.single_projection(start, end, reduction='bogus')
+
+
 class TestMultiFieldIO:
     """Test IO roundtrip with multi-field clouds."""
 
