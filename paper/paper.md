@@ -78,7 +78,7 @@ proj_xy = pc.grid_projection(extent, npix, bounds)
 
 # Research impact statement
 
-`vortrace` has been used in a number of publications for generating images and videos of galaxies [@Beane25a;@Beane25b;@Lucchini26]. Furthermore, the algorithm of `vortrace` was used in @Konietzka25 for computing electron dispersion measures of fast radio bursts (though they made their own implementation while `vortrace` was in an early stage of development).
+`vortrace` has been used in a number of publications for generating images and videos of galaxies [@Smith21;@Smith21b;@Smith24a;@Smith24b;@Beane25a;@Beane25b;@Ortame26;@Lucchini26]. Furthermore, the algorithm of `vortrace` was used in @Konietzka25 for computing electron dispersion measures of fast radio bursts (though they made their own implementation while `vortrace` was in an early stage of development).
 
 # AI usage disclosure
 
