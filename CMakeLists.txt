@@ -33,6 +33,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 set(CORE_CPP
   ${CMAKE_SOURCE_DIR}/src/pointcloud.cpp
   ${CMAKE_SOURCE_DIR}/src/ray.cpp
+  ${CMAKE_SOURCE_DIR}/src/reduction.cpp
   ${CMAKE_SOURCE_DIR}/src/projection.cpp
   ${CMAKE_SOURCE_DIR}/src/brute_projection.cpp
   ${CMAKE_SOURCE_DIR}/src/slice.cpp

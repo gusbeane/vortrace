@@ -10,6 +10,14 @@
 
 class Ray
 {
+  public:
+    struct Segment {
+      size_t cell_id;  // id of cell which intersects ray
+      Float s_enter;   // distance along ray where this cell begins
+      Float s_exit;    // distance along ray where this cell ends
+      Float ds() const { return s_exit - s_enter; }
+    };
+
   private:
 
     Point pos_start;
@@ -22,16 +30,9 @@ class Ray
       size_t next;
       Float s;
 
-      //Constructor
+      RayPoint() : tree_id(SIZE_MAX), next(SIZE_MAX), s(0.0) {}
       RayPoint(const size_t tree_id, const size_t next, const Float s) :
         tree_id(tree_id), next(next), s(s) {}
-    };
-
-    struct Segment {
-      size_t cell_id; // id of cell which intersects ray
-      Float s;      // distance from start of ray to the intersection point
-      Float s_edge; // distance from start of ray to one edge
-      Float ds;     // intersection width
     };
 
     std::vector<Segment> segments;
@@ -61,6 +62,7 @@ class Ray
     size_t perpPerturbToFindCell(const Point &pos, const PointCloud &cloud,
                              size_t exclude1, size_t exclude2) const;
 
+    const std::vector<Segment>& walk(const PointCloud &cloud);
     void integrate(const PointCloud &cloud, ReductionMode mode = ReductionMode::Sum);
 
     //Getters
