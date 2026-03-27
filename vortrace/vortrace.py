@@ -243,7 +243,7 @@ class ProjectionCloud:
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
 
-        # compute using Ray
+        # compute using Ray — walk then reduce
         ray = Ray(start_vec, end_vec)
         ray.integrate(self._cloud, reduction_mode)
 
@@ -253,56 +253,14 @@ class ProjectionCloud:
             col_vals = np.array(ray.get_min_val())
         else:
             col_vals = np.array(ray.get_col())  # length nfields
+
+        # Segments are already merged (one per cell, in order)
         segments = ray.get_segments()
-
-        # unpack segment info into arrays
-        cell_ids_raw = np.array([seg[0] for seg in segments], dtype=int)
-        s_raw = np.array([seg[1] for seg in segments], dtype=np.float64)
-        sedge_raw = np.array([seg[2] for seg in segments], dtype=np.float64)
-        ds_raw = np.array([seg[3] for seg in segments], dtype=np.float64)
-        # vectorized merge of duplicate cell_ids: first and last unique,
-        # interior appear in consecutive pairs
-        length = cell_ids_raw.size
-        if length == 2:
-            cell_ids = cell_ids_raw
-            s_vals = s_raw
-            smid_vals = sedge_raw
-            ds_vals = ds_raw
-        elif length > 2:
-            mids = np.arange(1, length-1, 2)
-            # assert matching start s for each duplicate pair
-            if not np.allclose(s_raw[mids], s_raw[mids+1]):
-                raise ValueError('mismatched s values in duplicate segments')
-
-            # pick unique cell_ids
-            cell_ids = np.concatenate((
-                [cell_ids_raw[0]],
-                cell_ids_raw[mids],
-                [cell_ids_raw[-1]]
-            ))
-
-            # pick s values: first, one per pair, last
-            s_vals = np.concatenate((
-                [s_raw[0]],
-                s_raw[mids],
-                [s_raw[-1]]
-            ))
-
-            # compute smid values for each pair
-            smid_vals = np.concatenate((
-                [sedge_raw[0]/2.],
-                (sedge_raw[mids] + sedge_raw[mids+1]) / 2.,
-                [(sedge_raw[-1]+np.linalg.norm(pos_end-pos_start)) / 2.]
-            ))
-
-            # sum ds values across each duplicate pair
-            ds_vals = np.concatenate((
-                [ds_raw[0]],
-                ds_raw[mids] + ds_raw[mids+1],
-                [ds_raw[-1]]
-            ))
-        else:
-            raise ValueError('pos_start and pos_end are in the same cell')
+        cell_ids = np.array([seg[0] for seg in segments], dtype=int)
+        s_enter = np.array([seg[1] for seg in segments], dtype=np.float64)
+        s_exit = np.array([seg[2] for seg in segments], dtype=np.float64)
+        ds_vals = np.array([seg[3] for seg in segments], dtype=np.float64)
+        smid_vals = (s_enter + s_exit) / 2.0
 
         # Validation: check that column values are consistent with segments
         # (only meaningful for Sum/integrate mode)
@@ -326,7 +284,7 @@ class ProjectionCloud:
         if return_midpoint:
             return dens_out, self.orig_ids[cell_ids], smid_vals, ds_vals
         else:
-            return dens_out, self.orig_ids[cell_ids], s_vals, ds_vals
+            return dens_out, self.orig_ids[cell_ids], s_enter, ds_vals
 
     # ------------------------------------------------------------------
     # Convenience I/O wrappers
