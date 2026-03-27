@@ -1,4 +1,5 @@
 #include "ray.hpp"
+#include "reduction.hpp"
 #include <algorithm>
 #include <iostream>
 #include <cmath>
@@ -182,51 +183,37 @@ size_t Ray::perpPerturbToFindCell(const Point &pos, const PointCloud &cloud,
     + std::to_string(MAX_PERTURBATION_CYCLES) + " cycles");
 }
 
-void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
+const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
 {
   size_t current, next;
   size_t ctree_id, ntree_id;
-  Float s, ds;
+  Float s;
   Point pos;
-
-  size_t nf = cloud.get_nfields();
-
-  col.assign(nf, 0.0);
-  max_val.assign(nf, -std::numeric_limits<Float>::infinity());
-  min_val.assign(nf, std::numeric_limits<Float>::infinity());
 
   segments.clear();
 
-  // Helper lambda to accumulate a segment for all fields
-  auto accumulate = [&](size_t cell_id, Float seg_ds) {
-    for (size_t f = 0; f < nf; f++) {
-      Float val = cloud.get_field(cell_id, f);
-      switch (reduction) {
-        case ReductionMode::Sum:
-          col[f] += seg_ds * val;
-          break;
-        case ReductionMode::Max:
-          if (val > max_val[f]) max_val[f] = val;
-          break;
-        case ReductionMode::Min:
-          if (val < min_val[f]) min_val[f] = val;
-          break;
-      }
-    }
-  };
+  // Reset linked list to initial two-point state for re-entrancy
+  pts.resize(2);
+  pts[0].tree_id = SIZE_MAX;
+  pts[0].next = 1;
+  pts[1].tree_id = SIZE_MAX;
+  pts[1].next = SIZE_MAX;
 
   //Find nearest neighbour for start and end ray points
   pts[0].tree_id = cloud.queryTree(pos_start);
   pts[1].tree_id = cloud.queryTree(pos_end);
+
+  // Track the currently open cell (entered but not yet closed)
+  size_t open_cell = pts[0].tree_id;
+  Float entry_s = pts[0].s;  // = 0.0
 
   //If tree_id matches, in same cell already
   if(pts[0].tree_id == pts[1].tree_id)
     {
       if (!cloud.get_periodic()) {
         // Start and end are in the same cell, so we are done.
-        ds = pts[1].s - pts[0].s;
-        accumulate(pts[0].tree_id, ds);
-        return;
+        segments.push_back({pts[0].tree_id, pts[0].s, pts[1].s});
+        return segments;
       }
 
       // Periodic: bisect along the ray to find a point in a different cell.
@@ -258,7 +245,7 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
       }
     }
 
-  //Otherwise start integration
+  //Otherwise start walk
   current = 0;
   ctree_id = pts[current].tree_id;
   next = pts[current].next;
@@ -270,13 +257,15 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
   while(not_done)
   {
     if (++iteration > MAX_ITERATIONS)
-      throw std::runtime_error("Ray integration exceeded maximum iteration count");
+      throw std::runtime_error("Ray walk exceeded maximum iteration count");
 
     // Skip zero-width segments (arise when Case 1a inserts two different
-    // intermediate cells at the same split-point position)
+    // intermediate cells at the same split-point position).
+    // Update the open cell identity but keep entry_s unchanged.
     if (pts[next].s - pts[current].s < 1e-14) {
       current = next;
       ctree_id = pts[current].tree_id;
+      open_cell = ctree_id;
       next = pts[current].next;
       if (next == SIZE_MAX) not_done = 0;
       else ntree_id = pts[next].tree_id;
@@ -349,13 +338,10 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
     if (has_c || has_n) {
       // Case 2/2b: c or n is among the equidistant nearest — the
       // boundary between c and n is at this split point.
-      ds = s - pts[current].s;
-      accumulate(ctree_id, ds);
-      segments.push_back({ ctree_id, pts[current].s, s, ds });
-
-      ds = pts[next].s - s;
-      accumulate(ntree_id, ds);
-      segments.push_back({ ntree_id, pts[next].s, s, ds });
+      // Close the current open cell and open the next one.
+      segments.push_back({open_cell, entry_s, s});
+      open_cell = ntree_id;
+      entry_s = s;
 
       //Advance past this boundary
       current = pts[current].next;
@@ -434,4 +420,20 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode reduction)
       }
     }
   } //while()
+
+  // Close the last open cell at the ray endpoint
+  segments.push_back({open_cell, entry_s, pts[current].s});
+
+  return segments;
+}
+
+void Ray::integrate(const PointCloud &cloud, ReductionMode mode)
+{
+  walk(cloud);
+  auto result = reduce(segments, cloud, mode);
+  switch (mode) {
+    case ReductionMode::Sum: col = std::move(result); break;
+    case ReductionMode::Max: max_val = std::move(result); break;
+    case ReductionMode::Min: min_val = std::move(result); break;
+  }
 }

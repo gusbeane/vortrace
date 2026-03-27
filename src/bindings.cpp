@@ -1,5 +1,6 @@
 #include "class_includes.hpp"
 #include "ray.hpp"
+#include "reduction.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -72,6 +73,8 @@ PYBIND11_MODULE(Cvortrace, m) {
 
     py::class_<Ray>(m, "Ray")
         .def(py::init<Point, Point>())
+        .def("walk", &Ray::walk,
+             py::arg("cloud"))
         .def("integrate", &Ray::integrate,
              py::arg("cloud"), py::arg("mode") = ReductionMode::Sum)
         .def("get_dens_col", &Ray::get_dens_col)
@@ -83,10 +86,17 @@ PYBIND11_MODULE(Cvortrace, m) {
             [](const Ray &r){
               py::list out;
               for (auto &seg : r.get_segments()) {
-                out.append(py::make_tuple(seg.cell_id, seg.s, seg.s_edge, seg.ds));
+                out.append(py::make_tuple(seg.cell_id, seg.s_enter, seg.s_exit, seg.ds()));
               }
               return out;
             }
           );
+
+    // Standalone reduction functions
+    m.def("reduce_sum", &reduce_sum, py::arg("segments"), py::arg("cloud"));
+    m.def("reduce_max", &reduce_max, py::arg("segments"), py::arg("cloud"));
+    m.def("reduce_min", &reduce_min, py::arg("segments"), py::arg("cloud"));
+    m.def("reduce", &reduce,
+          py::arg("segments"), py::arg("cloud"), py::arg("mode"));
 
 }
