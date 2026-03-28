@@ -7,7 +7,7 @@
 using Float = double;
 using Point = std::array<Float,3>;
 
-enum class ReductionMode { Sum = 0, Max = 1, Min = 2 };
+enum class ReductionMode { Sum = 0, Max = 1, Min = 2, VolumeRender = 3 };
 
 namespace vortrace {
   inline bool verbose = false;

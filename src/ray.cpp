@@ -435,5 +435,6 @@ void Ray::integrate(const PointCloud &cloud, ReductionMode mode)
     case ReductionMode::Sum: col = std::move(result); break;
     case ReductionMode::Max: max_val = std::move(result); break;
     case ReductionMode::Min: min_val = std::move(result); break;
+    case ReductionMode::VolumeRender: vol_render_val = std::move(result); break;
   }
 }

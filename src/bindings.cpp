@@ -18,6 +18,7 @@ PYBIND11_MODULE(Cvortrace, m) {
         .value("Sum", ReductionMode::Sum)
         .value("Max", ReductionMode::Max)
         .value("Min", ReductionMode::Min)
+        .value("VolumeRender", ReductionMode::VolumeRender)
         .export_values();
 
     py::class_<PointCloud>(m, "PointCloud")
@@ -81,6 +82,7 @@ PYBIND11_MODULE(Cvortrace, m) {
         .def("get_col", &Ray::get_col)
         .def("get_max_val", &Ray::get_max_val)
         .def("get_min_val", &Ray::get_min_val)
+        .def("get_vol_render_val", &Ray::get_vol_render_val)
         .def(
             "get_segments",
             [](const Ray &r){
@@ -96,6 +98,8 @@ PYBIND11_MODULE(Cvortrace, m) {
     m.def("reduce_sum", &reduce_sum, py::arg("segments"), py::arg("cloud"));
     m.def("reduce_max", &reduce_max, py::arg("segments"), py::arg("cloud"));
     m.def("reduce_min", &reduce_min, py::arg("segments"), py::arg("cloud"));
+    m.def("reduce_volume_render", &reduce_volume_render,
+          py::arg("segments"), py::arg("cloud"));
     m.def("reduce", &reduce,
           py::arg("segments"), py::arg("cloud"), py::arg("mode"));
 

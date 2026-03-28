@@ -38,9 +38,10 @@ class Ray
     std::vector<Segment> segments;
     std::vector<RayPoint> pts;
 
-    std::vector<Float> col;      // accumulated column values (Sum mode)
-    std::vector<Float> max_val;  // max values along ray
-    std::vector<Float> min_val;  // min values along ray
+    std::vector<Float> col;             // accumulated column values (Sum mode)
+    std::vector<Float> max_val;         // max values along ray
+    std::vector<Float> min_val;         // min values along ray
+    std::vector<Float> vol_render_val;  // volume-rendered RGB (3 values)
 
   public:
     Point dir;
@@ -70,6 +71,7 @@ class Ray
     const std::vector<Float>& get_col() const {return col;}
     const std::vector<Float>& get_max_val() const {return max_val;}
     const std::vector<Float>& get_min_val() const {return min_val;}
+    const std::vector<Float>& get_vol_render_val() const {return vol_render_val;}
     const std::vector<Segment>& get_segments() const {return segments;}
 
 };
