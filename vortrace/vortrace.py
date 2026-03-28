@@ -5,7 +5,11 @@ the C++ backend for grid projections, direct ray projections, and
 single-ray segment queries.
 """
 
+from __future__ import annotations
+
 import logging
+
+from numpy.typing import ArrayLike
 
 from .Cvortrace import (  # type: ignore
     PointCloud, Projection, Ray, ReductionMode,
@@ -33,7 +37,10 @@ class ProjectionCloud:
         'volume': ReductionMode.VolumeRender,
     }
 
-    def __init__(self, pos, fields, boundbox=None, vol=None, *, periodic=False):
+    def __init__(self, pos: ArrayLike, fields: ArrayLike,
+                 boundbox: list[float] | None = None,
+                 vol: ArrayLike | None = None, *,
+                 periodic: bool = False) -> None:
         """Create a ProjectionCloud from particle data.
 
         Parameters
@@ -93,21 +100,28 @@ class ProjectionCloud:
         _log.info("Applied bounding box filter: %d -> %d particles",
                   len(self.pos_orig), len(self.orig_ids))
 
-    def _validate_volume_fields(self):
-        """Check that fields are valid for volume rendering.
+    def _validate_reduction(self, reduction: str) -> ReductionMode:
+        """Validate reduction mode and return the corresponding enum.
 
-        Raises ValueError if RGB values are outside [0, 1] or alpha < 0.
+        Raises ValueError for unknown modes or invalid field configuration.
         """
-        rgb = self.fields_orig[:, :3]
-        alpha = self.fields_orig[:, 3]
-        if np.any(rgb < 0) or np.any(rgb > 1):
+        mode = self._REDUCTION_MAP.get(reduction)
+        if mode is None:
             raise ValueError(
-                "Volume rendering requires R, G, B values in [0, 1]")
-        if np.any(alpha < 0):
-            raise ValueError(
-                "Volume rendering requires alpha >= 0")
+                f"Unknown reduction {reduction!r}. "
+                f"Use one of {list(self._REDUCTION_MAP)}")
+        if mode == ReductionMode.VolumeRender:
+            if self._nfields != 4:
+                raise ValueError(
+                    "Volume rendering requires exactly 4 fields "
+                    f"(R, G, B, alpha), got {self._nfields}")
+            if not self._cloud.get_valid_rgba():
+                raise ValueError(
+                    "Volume rendering requires R, G, B values in [0, 1] "
+                    "and alpha >= 0")
+        return mode
 
-    def _prepare_array_for_backend(self, arr):
+    def _prepare_array_for_backend(self, arr: ArrayLike) -> np.ndarray:
         """Converts input to a C-contiguous float64 numpy array if not already.
 
         Args:
@@ -121,8 +135,14 @@ class ProjectionCloud:
             np_arr = np.ascontiguousarray(np_arr, dtype=np.float64)
         return np_arr
 
-    def grid_projection(self, extent, nres, bounds, center, *, proj=None,
-                        yaw=0., pitch=0., roll=0., reduction='integrate'):
+    def grid_projection(self, extent: ArrayLike,
+                        nres: int | tuple[int, int],
+                        bounds: ArrayLike,
+                        center: ArrayLike | None, *,
+                        proj: str | None = None,
+                        yaw: float = 0., pitch: float = 0.,
+                        roll: float = 0.,
+                        reduction: str = 'integrate') -> np.ndarray:
         """Make a grid projection through the point cloud.
 
         Args:
@@ -145,19 +165,7 @@ class ProjectionCloud:
                 ``(nres, nres, nfields)`` for multi-field, or
                 ``(nres, nres, 3)`` for volume rendering.
         """
-        reduction_mode = self._REDUCTION_MAP.get(reduction)
-        if reduction_mode is None:
-            raise ValueError(
-                f"Unknown reduction {reduction!r}. "
-                f"Use one of {list(self._REDUCTION_MAP)}")
-
-        if (reduction_mode == ReductionMode.VolumeRender
-                and self._nfields != 4):
-            raise ValueError(
-                "Volume rendering requires exactly 4 fields "
-                f"(R, G, B, alpha), got {self._nfields}")
-        if reduction_mode == ReductionMode.VolumeRender:
-            self._validate_volume_fields()
+        reduction_mode = self._validate_reduction(reduction)
 
         pos_start, pos_end = gr.generate_projection_grid(extent, nres, bounds,
                                                          center, proj=proj,
@@ -183,7 +191,8 @@ class ProjectionCloud:
             dat = np.reshape(dat, (*orig_shape[:-1], out_nfields))
         return dat
 
-    def projection(self, pos_start, pos_end, *, reduction='integrate'):
+    def projection(self, pos_start: ArrayLike, pos_end: ArrayLike, *,
+                   reduction: str = 'integrate') -> np.ndarray:
         """Make a projection through the point cloud.
 
         Args:
@@ -197,19 +206,7 @@ class ProjectionCloud:
             dat (array of float): The projection data. Shape ``(N,)`` when
                 a single field was loaded, ``(N, nfields)`` otherwise.
         """
-        reduction_mode = self._REDUCTION_MAP.get(reduction)
-        if reduction_mode is None:
-            raise ValueError(
-                f"Unknown reduction {reduction!r}. "
-                f"Use one of {list(self._REDUCTION_MAP)}")
-
-        if (reduction_mode == ReductionMode.VolumeRender
-                and self._nfields != 4):
-            raise ValueError(
-                "Volume rendering requires exactly 4 fields "
-                f"(R, G, B, alpha), got {self._nfields}")
-        if reduction_mode == ReductionMode.VolumeRender:
-            self._validate_volume_fields()
+        reduction_mode = self._validate_reduction(reduction)
 
         pos_start = self._prepare_array_for_backend(pos_start)
         pos_end = self._prepare_array_for_backend(pos_end)
@@ -226,8 +223,9 @@ class ProjectionCloud:
         proj_obj.makeProjection(self._cloud, reduction_mode)
         return proj_obj.returnProjection()
 
-    def single_projection(self, pos_start, pos_end, return_midpoint=True,
-                           *, reduction='integrate'):
+    def single_projection(self, pos_start: ArrayLike, pos_end: ArrayLike,
+                           return_midpoint: bool = True, *,
+                           reduction: str = 'integrate') -> tuple:
         """Perform projection for a single ray and return column density and
         per-segment info.
 
@@ -275,19 +273,7 @@ class ProjectionCloud:
         start_vec = pos_start_c[0]
         end_vec = pos_end_c[0]
 
-        reduction_mode = self._REDUCTION_MAP.get(reduction)
-        if reduction_mode is None:
-            raise ValueError(
-                f"Unknown reduction {reduction!r}. "
-                f"Use one of {list(self._REDUCTION_MAP)}")
-
-        if (reduction_mode == ReductionMode.VolumeRender
-                and self._nfields != 4):
-            raise ValueError(
-                "Volume rendering requires exactly 4 fields "
-                f"(R, G, B, alpha), got {self._nfields}")
-        if reduction_mode == ReductionMode.VolumeRender:
-            self._validate_volume_fields()
+        reduction_mode = self._validate_reduction(reduction)
 
         # compute using Ray — walk then reduce
         ray = Ray(start_vec, end_vec)
@@ -344,7 +330,7 @@ class ProjectionCloud:
     # Convenience I/O wrappers
     # ------------------------------------------------------------------
 
-    def save(self, filename, *, fmt="npz"):
+    def save(self, filename: str, *, fmt: str = "npz") -> None:
         """Save this cloud to disk.
 
         See :func:`vortrace.io.save_cloud` for details.
@@ -353,7 +339,7 @@ class ProjectionCloud:
         save_cloud(filename, self, fmt=fmt)
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename: str) -> ProjectionCloud:
         """Load a cloud from disk.
 
         See :func:`vortrace.io.load_cloud` for details.

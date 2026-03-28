@@ -26,6 +26,7 @@ class PointCloud
 
     bool periodic = false;
     Point box_size = {0.0, 0.0, 0.0};
+    bool valid_rgba = false;
 
     bool tree_built = false;
     std::unique_ptr<my_kd_tree_t> tree;
@@ -56,6 +57,7 @@ class PointCloud
     double get_pad() const {return pad;}
     size_t get_npart() const {return npart;}
     bool get_periodic() const {return periodic;}
+    bool get_valid_rgba() const {return valid_rgba;}
     Point get_box_size() const {return box_size;}
 
     //Required methods for nanoflann adaptor.
