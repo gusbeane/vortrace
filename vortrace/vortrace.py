@@ -22,7 +22,7 @@ class ProjectionCloud:
 
     Wraps the C++ ``Cvortrace`` backend to provide grid-based projections,
     arbitrary ray projections, and single-ray segment queries.  Supports
-    multiple fields and reduction modes (sum/integrate, max, min).
+    multiple fields and reduction modes (sum/integrate, max, min, volume).
     """
 
     _REDUCTION_MAP = {
@@ -30,6 +30,7 @@ class ProjectionCloud:
         'sum': ReductionMode.Sum,
         'max': ReductionMode.Max,
         'min': ReductionMode.Min,
+        'volume': ReductionMode.VolumeRender,
     }
 
     def __init__(self, pos, fields, boundbox=None, vol=None, *, periodic=False):
@@ -92,6 +93,20 @@ class ProjectionCloud:
         _log.info("Applied bounding box filter: %d -> %d particles",
                   len(self.pos_orig), len(self.orig_ids))
 
+    def _validate_volume_fields(self):
+        """Check that fields are valid for volume rendering.
+
+        Raises ValueError if RGB values are outside [0, 1] or alpha < 0.
+        """
+        rgb = self.fields_orig[:, :3]
+        alpha = self.fields_orig[:, 3]
+        if np.any(rgb < 0) or np.any(rgb > 1):
+            raise ValueError(
+                "Volume rendering requires R, G, B values in [0, 1]")
+        if np.any(alpha < 0):
+            raise ValueError(
+                "Volume rendering requires alpha >= 0")
+
     def _prepare_array_for_backend(self, arr):
         """Converts input to a C-contiguous float64 numpy array if not already.
 
@@ -121,17 +136,28 @@ class ProjectionCloud:
             pitch: Pitch angle in radians.
             roll: Roll angle in radians.
             reduction: ``'integrate'``/``'sum'``, ``'max'``,
-                or ``'min'``.
+                ``'min'``, or ``'volume'``.  Volume rendering
+                requires exactly 4 fields (R, G, B, alpha) and
+                returns 3 output channels (RGB).
 
         Returns:
-            ndarray: Shape ``(nres, nres)`` for single field, or
-                ``(nres, nres, nfields)`` for multi-field.
+            ndarray: Shape ``(nres, nres)`` for single field,
+                ``(nres, nres, nfields)`` for multi-field, or
+                ``(nres, nres, 3)`` for volume rendering.
         """
         reduction_mode = self._REDUCTION_MAP.get(reduction)
         if reduction_mode is None:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
+
+        if (reduction_mode == ReductionMode.VolumeRender
+                and self._nfields != 4):
+            raise ValueError(
+                "Volume rendering requires exactly 4 fields "
+                f"(R, G, B, alpha), got {self._nfields}")
+        if reduction_mode == ReductionMode.VolumeRender:
+            self._validate_volume_fields()
 
         pos_start, pos_end = gr.generate_projection_grid(extent, nres, bounds,
                                                          center, proj=proj,
@@ -149,10 +175,12 @@ class ProjectionCloud:
         dat = proj_obj.returnProjection()
 
         # Reshape before returning.
-        if self._nfields == 1:
+        out_nfields = (3 if reduction_mode == ReductionMode.VolumeRender
+                       else self._nfields)
+        if out_nfields == 1:
             dat = np.reshape(dat, orig_shape[:-1])
         else:
-            dat = np.reshape(dat, (*orig_shape[:-1], self._nfields))
+            dat = np.reshape(dat, (*orig_shape[:-1], out_nfields))
         return dat
 
     def projection(self, pos_start, pos_end, *, reduction='integrate'):
@@ -161,7 +189,9 @@ class ProjectionCloud:
         Args:
             pos_start (array of float): Starting points of the projection.
             pos_end (array of float): Ending points of the projection.
-            reduction (str): Reduction mode: 'integrate'/'sum', 'max', 'min'.
+            reduction (str): Reduction mode: 'integrate'/'sum', 'max', 'min',
+                or 'volume'. Volume rendering requires 4 fields (R, G, B,
+                alpha) and returns 3 channels (RGB).
 
         Returns:
             dat (array of float): The projection data. Shape ``(N,)`` when
@@ -172,6 +202,14 @@ class ProjectionCloud:
             raise ValueError(
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
+
+        if (reduction_mode == ReductionMode.VolumeRender
+                and self._nfields != 4):
+            raise ValueError(
+                "Volume rendering requires exactly 4 fields "
+                f"(R, G, B, alpha), got {self._nfields}")
+        if reduction_mode == ReductionMode.VolumeRender:
+            self._validate_volume_fields()
 
         pos_start = self._prepare_array_for_backend(pos_start)
         pos_end = self._prepare_array_for_backend(pos_end)
@@ -243,6 +281,14 @@ class ProjectionCloud:
                 f"Unknown reduction {reduction!r}. "
                 f"Use one of {list(self._REDUCTION_MAP)}")
 
+        if (reduction_mode == ReductionMode.VolumeRender
+                and self._nfields != 4):
+            raise ValueError(
+                "Volume rendering requires exactly 4 fields "
+                f"(R, G, B, alpha), got {self._nfields}")
+        if reduction_mode == ReductionMode.VolumeRender:
+            self._validate_volume_fields()
+
         # compute using Ray — walk then reduce
         ray = Ray(start_vec, end_vec)
         ray.integrate(self._cloud, reduction_mode)
@@ -251,6 +297,8 @@ class ProjectionCloud:
             col_vals = np.array(ray.get_max_val())
         elif reduction_mode == ReductionMode.Min:
             col_vals = np.array(ray.get_min_val())
+        elif reduction_mode == ReductionMode.VolumeRender:
+            col_vals = np.array(ray.get_vol_render_val())
         else:
             col_vals = np.array(ray.get_col())  # length nfields
 
@@ -278,8 +326,14 @@ class ProjectionCloud:
                         f"not give consistent density: "
                         f"{col_vals[f_idx]} != {computed}")
 
-        # Return scalar dens for backward compat when nfields == 1
-        dens_out = col_vals[0] if self._nfields == 1 else col_vals
+        # VolumeRender always returns a 3-element RGB array.
+        # Scalar dens for backward compat when nfields == 1.
+        if reduction_mode == ReductionMode.VolumeRender:
+            dens_out = col_vals
+        elif self._nfields == 1:
+            dens_out = col_vals[0]
+        else:
+            dens_out = col_vals
 
         if return_midpoint:
             return dens_out, self.orig_ids[cell_ids], smid_vals, ds_vals

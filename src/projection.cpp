@@ -1,5 +1,6 @@
 
 #include "projection.hpp"
+#include "reduction.hpp"
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -54,7 +55,7 @@ void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
     throw std::runtime_error("There is currently no valid tree for this point cloud");
   }
 
-  nfields = cloud.get_nfields();
+  nfields = reduce_output_size(mode, cloud.get_nfields());
 
   //resize and zero result vector(s)
   proj_data.resize(ngrid * nfields);
@@ -73,9 +74,10 @@ void Projection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 
         const std::vector<Float> *src;
         switch (mode) {
-          case ReductionMode::Max: src = &projray.get_max_val(); break;
-          case ReductionMode::Min: src = &projray.get_min_val(); break;
-          default:                 src = &projray.get_col();     break;
+          case ReductionMode::Max:          src = &projray.get_max_val(); break;
+          case ReductionMode::Min:          src = &projray.get_min_val(); break;
+          case ReductionMode::VolumeRender: src = &projray.get_vol_render_val(); break;
+          default:                          src = &projray.get_col();     break;
         }
 
         for(size_t f = 0; f < nfields; f++)

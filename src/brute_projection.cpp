@@ -9,6 +9,10 @@
 
 void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
+  if (mode == ReductionMode::VolumeRender)
+    throw std::runtime_error(
+      "VolumeRender is not supported by BruteProjection: "
+      "it requires ordered ray segments");
 
   if(!cloud.get_tree_built())
   {
