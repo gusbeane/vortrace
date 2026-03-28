@@ -57,9 +57,13 @@ std::vector<Float> reduce_volume_render(const std::vector<Ray::Segment> &segment
 {
   size_t nf = cloud.get_nfields();
   if (nf != 4)
-    throw std::runtime_error(
+    throw std::invalid_argument(
       "VolumeRender requires exactly 4 fields (R, G, B, alpha), got "
       + std::to_string(nf));
+
+  if (!cloud.get_valid_rgba())
+    throw std::invalid_argument(
+      "Volume rendering requires R, G, B values in [0, 1] and alpha >= 0");
 
   Float T = 1.0;  // transmittance
   std::vector<Float> color(3, 0.0);
@@ -87,9 +91,8 @@ std::vector<Float> reduce(const std::vector<Ray::Segment> &segments,
     case ReductionMode::Max: return reduce_max(segments, cloud);
     case ReductionMode::Min: return reduce_min(segments, cloud);
     case ReductionMode::VolumeRender: return reduce_volume_render(segments, cloud);
-    default: throw std::runtime_error("Unrecognized reduction mode");
+    default: throw std::invalid_argument("Unrecognized reduction mode");
   }
-  return reduce_sum(segments, cloud); // unreachable, silences compiler warning
 }
 
 size_t reduce_output_size(ReductionMode mode, size_t cloud_nfields) {

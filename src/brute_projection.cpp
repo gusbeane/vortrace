@@ -6,11 +6,12 @@
 #include <algorithm>
 #include <limits>
 #include <chrono>
+#include <stdexcept>
 
 void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode)
 {
   if (mode == ReductionMode::VolumeRender)
-    throw std::runtime_error(
+    throw std::invalid_argument(
       "VolumeRender is not supported by BruteProjection: "
       "it requires ordered ray segments");
 
@@ -25,7 +26,7 @@ void BruteProjection::makeProjection(const PointCloud &cloud, ReductionMode mode
       (extent[2] < subbox[2]) || (extent[3] > subbox[3]) ||
       (extent[4] < subbox[4]) || (extent[5] > subbox[5]))
   {
-    throw std::runtime_error("Projection extent out of bounds of current cloud subbox");
+    throw std::invalid_argument("Projection extent out of bounds of current cloud subbox");
   }
 
   nfields = cloud.get_nfields();

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstring>
 #include <chrono>
+#include <stdexcept>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
@@ -21,12 +22,12 @@ Projection::Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end)
 
   // Check to ensure they have the correct dimensions
   if (buf_pos_start.ndim != 2 || buf_pos_end.ndim != 2)
-    throw std::runtime_error("PROJECTION: pos_start and pos_end array must both be two-dimensional\n");
+    throw std::invalid_argument("PROJECTION: pos_start and pos_end array must both be two-dimensional\n");
 
   // Check to ensure they have the same number of particles.
   if (buf_pos_start.size != buf_pos_end.size)
   {
-    throw std::runtime_error("PROJECTION: pos_start and pos_end must have same sizes");
+    throw std::invalid_argument("PROJECTION: pos_start and pos_end must have same sizes");
   }
 
   // Allocate and load in arrrays.
