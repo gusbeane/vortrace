@@ -5,22 +5,32 @@ Provides routines for building start/end point grids used by
 Tait-Bryan rotation support and numba-accelerated grid construction.
 """
 
+from __future__ import annotations
+
 import numpy as np
 from numba import njit
+from numpy.typing import ArrayLike
+
+_PROJECTIONS = {
+    # Right handed projections.
+    'xy': (0., 0., 0., 1),
+    'yz': (np.pi / 2., 0., np.pi / 2., 1),
+    'zx': (3. * np.pi / 2., 3. * np.pi / 2., 0., 1),
+
+    # Left handed projections.
+    'yx': (np.pi / 2., 0., np.pi, -1),
+    'xz': (0., 0., np.pi / 2., -1),
+    'zy': (0., 3. * np.pi / 2., 0., -1),
+}
 
 
-def _convert_proj_to_tait_bryan_angles_hand(proj):
-    return {
-        # Right handed projections.
-        'xy': (0., 0., 0., 1),
-        'yz': (np.pi / 2., 0., np.pi / 2., 1),
-        'zx': (3. * np.pi / 2., 3. * np.pi / 2., 0., 1),
-
-        # Left handed projections.
-        'yx': (np.pi / 2., 0., np.pi, -1),
-        'xz': (0., 0., np.pi / 2., -1),
-        'zy': (0., 3. * np.pi / 2., 0., -1),
-    }[proj]
+def _convert_proj_to_tait_bryan_angles_hand(
+        proj: str) -> tuple[float, float, float, int]:
+    if proj not in _PROJECTIONS:
+        raise ValueError(
+            f"Unknown projection {proj!r}. "
+            f"Valid options: {list(_PROJECTIONS)}")
+    return _PROJECTIONS[proj]
 
 
 @njit
@@ -45,7 +55,8 @@ def _generate_base_grid(extent, nres):
     return grid
 
 
-def generate_base_grid(extent, nres):
+def generate_base_grid(extent: ArrayLike,
+                       nres: int | tuple[int, int]) -> np.ndarray:
     """Generates a 2D primitive grid.
 
     Generates a 2D primitive grid spanning a given extent with a certain number
@@ -97,14 +108,15 @@ def _rotation_matrix_from_yaw_pitch_roll(yaw, pitch, roll):
     return rot_mat
 
 
-def generate_projection_grid(extent,
-                             nres,
-                             bounds,
-                             center, *,
-                             proj=None,
-                             yaw=0.,
-                             pitch=0.,
-                             roll=0.):
+def generate_projection_grid(
+        extent: ArrayLike,
+        nres: int | tuple[int, int],
+        bounds: ArrayLike,
+        center: ArrayLike | None, *,
+        proj: str | None = None,
+        yaw: float = 0.,
+        pitch: float = 0.,
+        roll: float = 0.) -> tuple[np.ndarray, np.ndarray]:
     """Generates a projection grid.
 
     This generates a projection grid which can be arbitrarily rotated about a
