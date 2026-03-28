@@ -22,7 +22,7 @@ class ProjectionCloud:
 
     Wraps the C++ ``Cvortrace`` backend to provide grid-based projections,
     arbitrary ray projections, and single-ray segment queries.  Supports
-    multiple fields and reduction modes (sum/integrate, max, min).
+    multiple fields and reduction modes (sum/integrate, max, min, volume).
     """
 
     _REDUCTION_MAP = {
@@ -136,11 +136,14 @@ class ProjectionCloud:
             pitch: Pitch angle in radians.
             roll: Roll angle in radians.
             reduction: ``'integrate'``/``'sum'``, ``'max'``,
-                or ``'min'``.
+                ``'min'``, or ``'volume'``.  Volume rendering
+                requires exactly 4 fields (R, G, B, alpha) and
+                returns 3 output channels (RGB).
 
         Returns:
-            ndarray: Shape ``(nres, nres)`` for single field, or
-                ``(nres, nres, nfields)`` for multi-field.
+            ndarray: Shape ``(nres, nres)`` for single field,
+                ``(nres, nres, nfields)`` for multi-field, or
+                ``(nres, nres, 3)`` for volume rendering.
         """
         reduction_mode = self._REDUCTION_MAP.get(reduction)
         if reduction_mode is None:
@@ -186,7 +189,9 @@ class ProjectionCloud:
         Args:
             pos_start (array of float): Starting points of the projection.
             pos_end (array of float): Ending points of the projection.
-            reduction (str): Reduction mode: 'integrate'/'sum', 'max', 'min'.
+            reduction (str): Reduction mode: 'integrate'/'sum', 'max', 'min',
+                or 'volume'. Volume rendering requires 4 fields (R, G, B,
+                alpha) and returns 3 channels (RGB).
 
         Returns:
             dat (array of float): The projection data. Shape ``(N,)`` when

@@ -29,3 +29,34 @@ for efficient nearest-neighbour searches.  Then:
 
 This recursive splitting ensures that the number of kDTree queries scales
 with the number of cell crossings, not with a fixed sampling resolution.
+
+Reduction modes
+---------------
+
+After walking a ray through the mesh, ``vortrace`` produces an ordered list of
+**segments** -- each recording which cell was crossed and the path length
+through it.  A *reduction* function then combines these segments into a single
+result per ray.  Four modes are available:
+
+**Sum** (``reduction='integrate'`` or ``'sum'``)
+   Weighted integral: for each field *f*, accumulate
+   ``ds * field[cell, f]`` over all segments.  Returns one value per field.
+
+**Max / Min** (``reduction='max'`` / ``'min'``)
+   Track the maximum or minimum field value encountered along the ray (no
+   distance weighting).  Returns one value per field.
+
+**Volume rendering** (``reduction='volume'``)
+   Front-to-back emission-absorption compositing.  Requires exactly four
+   input fields interpreted as (R, G, B, alpha), where alpha is the
+   absorption coefficient per unit length.  For each segment:
+
+   .. math::
+
+      C_c \mathrel{+}= T \cdot \text{field}_c \cdot (1 - e^{-\alpha \, ds}),
+      \qquad T \mathrel{*}= e^{-\alpha \, ds}
+
+   where *T* is the transmittance (initially 1).  Returns three values (RGB)
+   per ray.  The user defines a transfer function in Python that maps cell
+   quantities to the (R, G, B, alpha) fields before passing them to
+   ``ProjectionCloud``.

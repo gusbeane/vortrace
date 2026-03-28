@@ -57,6 +57,22 @@ pc = vt.ProjectionCloud(pos, rho)
 proj_xy = pc.grid_projection(extent, npix, bounds)
 ```
 
+## Volume Rendering
+
+``vortrace`` also supports volume rendering. Define a transfer function in Python that maps cell quantities to (R, G, B, alpha), then pass the 4-field array to the integrator:
+
+```python
+# apply a transfer function to get RGBA per cell
+R, G, B, alpha = my_transfer_function(rho)
+fields_rgba = np.column_stack([R, G, B, alpha])
+
+pc = vt.ProjectionCloud(pos, fields_rgba)
+img = pc.grid_projection(extent, npix, bounds, reduction='volume')
+# img is a (npix, npix, 3) RGB array
+```
+
+See the [QuickStart notebook](docs/QuickStart.ipynb) for a complete example with a sample transfer function.
+
 ## How Does ``vortrace`` Work?
 
 A one-dimensional integral through an unstructured mesh at first glance seems very complicated, as one must wrangle with the complex geometry of a Voronoi mesh. However, one can use the definition of the mesh to simplify the operation considerably.
