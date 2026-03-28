@@ -79,31 +79,3 @@ void Slice::saveSlice(const std::string savename) const
   myfile.close();
 }
 
-py::array_t<double> Slice::returnSlice(void) const
-{
-  if(slice_data.empty())
-  {
-    throw std::runtime_error("Slice has not yet been made");
-  }
-
-  size_t ngrid = npix[0] * npix[1];
-
-  if(nfields == 1)
-  {
-    auto result = py::array_t<double>(ngrid);
-    py::buffer_info buf = result.request();
-    auto *ptr = static_cast<double *>(buf.ptr);
-    for(size_t i = 0; i < ngrid; i++)
-      ptr[i] = slice_data[i];
-    return result;
-  }
-  else
-  {
-    auto result = py::array_t<double>({(ssize_t)ngrid, (ssize_t)nfields});
-    py::buffer_info buf = result.request();
-    auto *ptr = static_cast<double *>(buf.ptr);
-    for(size_t i = 0; i < ngrid * nfields; i++)
-      ptr[i] = slice_data[i];
-    return result;
-  }
-}
