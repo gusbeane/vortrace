@@ -10,6 +10,7 @@ Full scaling benchmark (slow, needs -s for output):
     pytest -m benchmark tests/test_openmp.py -v -s
 """
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,10 @@ import time
 import h5py as h5
 import numpy as np
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    platform.system() == "Darwin",
+    reason="OpenMP not available with Apple Clang")
 
 from vortrace import vortrace as vt
 
@@ -170,18 +175,6 @@ def _print_scaling_table(npix, timings, threads):
     print("--------------------------------------------------")
 
 
-def _check_openmp_functional(snapname):
-    """Quick check: does 2 threads give any speedup over 1 thread?
-
-    Returns True if speedup > 1.1x, indicating OpenMP is working.
-    """
-    t1 = _run_projection_subprocess(snapname, npix=32, nthreads=1)
-    t2 = _run_projection_subprocess(snapname, npix=32, nthreads=2)
-    if t1 is None or t2 is None or t2 == 0:
-        return False
-    return t1 / t2 > 1.1
-
-
 class TestOpenMPPerformance:
     """Full scaling benchmark across many thread counts and grid sizes.
 
@@ -194,9 +187,6 @@ class TestOpenMPPerformance:
     @pytest.mark.benchmark
     def test_projection_scaling(self):
         """Measure wall-clock scaling from 1 to 16 threads at 128x128."""
-        if not _check_openmp_functional(self.snapname):
-            pytest.skip("OpenMP does not appear to be functional")
-
         npix = 128
         threads = _thread_counts(max_nt=16)
 
@@ -218,9 +208,6 @@ class TestOpenMPPerformance:
     @pytest.mark.benchmark
     def test_projection_scaling_large(self):
         """Measure wall-clock scaling from 1 to 16 threads at 256x256."""
-        if not _check_openmp_functional(self.snapname):
-            pytest.skip("OpenMP does not appear to be functional")
-
         npix = 256
         threads = _thread_counts(max_nt=16)
 
