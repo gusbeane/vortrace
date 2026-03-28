@@ -4,7 +4,7 @@ Exact projections through voronoi meshes faster than you can say "I have a probl
 
 ## What does ``vortrace`` do?
 
-One-dimensional integrals through voronoi meshes can be expensive. Because the mesh is unstructured, it is not obvious a priori where a line interesects the faces of which cells. Brute force methods which just sample large numbers of points struggle with systems with a large dynamic range in cell size, like cosmological simulations.
+One-dimensional integrals through voronoi meshes can be expensive. Because the mesh is unstructured, it is not obvious a priori where a line intersects the faces of which cells. Brute force methods which just sample large numbers of points struggle with systems with a large dynamic range in cell size, like cosmological simulations.
 
 ``vortrace`` does one-dimensional integrals with the fewest number of nearest neighbor calls possible. With an optimized yet lightweight ``C++`` backend and a user-friendly ``python`` frontend, it's easy to get started.
 
@@ -19,7 +19,7 @@ pip install vortrace
 Or if you prefer to build from source:
 
 ```
-git clone git@github.com:gusbeane/vortrace.git
+git clone https://github.com/gusbeane/vortrace.git
 cd vortrace
 pip install ./
 ``` -->
@@ -27,7 +27,7 @@ pip install ./
 Installing ``vortrace`` can be done using ``pip``:
 
 ```
-git clone git@github.com:gusbeane/vortrace.git
+git clone https://github.com/gusbeane/vortrace.git
 cd vortrace
 pip install ./
 ```
