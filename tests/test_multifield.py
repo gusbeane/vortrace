@@ -1,6 +1,5 @@
 """Tests for multi-field integration and reduction modes."""
 
-import h5py as h5
 import numpy as np
 import pytest
 from vortrace import vortrace as vt
@@ -10,28 +9,16 @@ from vortrace import io
 class TestMultiField:
     """Test multi-field projection functionality."""
 
-    def read_arepo_snap(self, snapname):
-        f = h5.File(snapname, mode='r')
-        pos = np.array(f['PartType0']['Coordinates'])
-        dens = np.array(f['PartType0']['Density'])
-        box_size = f['Parameters'].attrs['BoxSize']
-        f.close()
-        return pos, dens, box_size
-
-    def _make_cloud_and_params(self):
-        """Helper: load test data and return (pos, dens, box_size, length)."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
-        length = 75.
-        return pos, dens, box_size, length
-
     # ------------------------------------------------------------------
     # Multi-field grid projection
     # ------------------------------------------------------------------
 
-    def test_multifield_grid_projection_scaling(self):
+    def test_multifield_grid_projection_scaling(self, arepo_snap):
         """Pass [dens, 2*dens]; second field should be 2x first."""
-        pos, dens, box_size, length = self._make_cloud_and_params()
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
+        length = 75.
 
         fields = np.column_stack([dens, 2 * dens])
         pc = vt.ProjectionCloud(
@@ -47,9 +34,12 @@ class TestMultiField:
         assert dat.shape == (npix, npix, 2)
         np.testing.assert_allclose(dat[:, :, 1], 2 * dat[:, :, 0], rtol=1e-12)
 
-    def test_multifield_matches_single_field(self):
+    def test_multifield_matches_single_field(self, arepo_snap):
         """Multi-field first column matches standalone single-field result."""
-        pos, dens, box_size, length = self._make_cloud_and_params()
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
+        length = 75.
 
         # Single field
         pc1 = vt.ProjectionCloud(
@@ -71,9 +61,12 @@ class TestMultiField:
         assert dat2.shape == (npix, npix, 2)
         np.testing.assert_allclose(dat2[:, :, 0], dat1, rtol=1e-12)
 
-    def test_multifield_mass_weighted_temperature(self):
+    def test_multifield_mass_weighted_temperature(self, arepo_snap):
         """Pass [dens, dens*T]; ratio recovers constant T."""
-        pos, dens, box_size, length = self._make_cloud_and_params()
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
+        length = 75.
 
         T_const = 42.0
         fields = np.column_stack([dens, dens * T_const])
@@ -94,9 +87,12 @@ class TestMultiField:
     # Multi-field projection() method
     # ------------------------------------------------------------------
 
-    def test_multifield_projection(self):
+    def test_multifield_projection(self, arepo_snap):
         """projection() with multi-field returns (N, nfields)."""
-        pos, dens, box_size, length = self._make_cloud_and_params()
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
+        length = 75.
 
         fields = np.column_stack([dens, 3 * dens])
         pc = vt.ProjectionCloud(
@@ -123,9 +119,11 @@ class TestMultiField:
     # single_projection multi-field
     # ------------------------------------------------------------------
 
-    def test_single_projection_multifield(self):
+    def test_single_projection_multifield(self, arepo_snap):
         """single_projection with multi-field returns array dens."""
-        pos, dens, box_size, length = self._make_cloud_and_params()
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
 
         fields = np.column_stack([dens, 5 * dens])
         pc = vt.ProjectionCloud(
@@ -144,18 +142,11 @@ class TestMultiField:
 class TestReduction:
     """Test max/min reduction modes."""
 
-    def read_arepo_snap(self, snapname):
-        f = h5.File(snapname, mode='r')
-        pos = np.array(f['PartType0']['Coordinates'])
-        dens = np.array(f['PartType0']['Density'])
-        box_size = f['Parameters'].attrs['BoxSize']
-        f.close()
-        return pos, dens, box_size
-
-    def test_max_reduction(self):
+    def test_max_reduction(self, arepo_snap):
         """Max reduction should give peak density along sightline."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
 
         pc = vt.ProjectionCloud(
             pos, dens,
@@ -178,10 +169,11 @@ class TestReduction:
         # Just check they're different and max > 0
         assert not np.allclose(dat_max, dat_sum)
 
-    def test_min_reduction(self):
+    def test_min_reduction(self, arepo_snap):
         """Min reduction should give minimum density along sightline."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
 
         pc = vt.ProjectionCloud(
             pos, dens,
@@ -199,10 +191,11 @@ class TestReduction:
         # Min should be <= max everywhere
         assert np.all(dat_min <= dat_max)
 
-    def test_max_multifield(self):
+    def test_max_multifield(self, arepo_snap):
         """Max reduction with multiple fields."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
 
         fields = np.column_stack([dens, 2 * dens])
         pc = vt.ProjectionCloud(
@@ -221,18 +214,11 @@ class TestReduction:
 class TestSingleProjectionReduction:
     """Test single_projection with different reduction modes."""
 
-    def read_arepo_snap(self, snapname):
-        f = h5.File(snapname, mode='r')
-        pos = np.array(f['PartType0']['Coordinates'])
-        dens = np.array(f['PartType0']['Density'])
-        box_size = f['Parameters'].attrs['BoxSize']
-        f.close()
-        return pos, dens, box_size
-
-    def test_single_projection_max_reduction(self):
+    def test_single_projection_max_reduction(self, arepo_snap):
         """single_projection with max reduction."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         pc = vt.ProjectionCloud(
             pos, dens,
             boundbox=[0., box_size, 0., box_size, 0., box_size])
@@ -244,10 +230,11 @@ class TestSingleProjectionReduction:
         # Max should equal max of field values in intersected cells
         np.testing.assert_allclose(max_val, np.max(dens[cell_ids]))
 
-    def test_single_projection_min_reduction(self):
+    def test_single_projection_min_reduction(self, arepo_snap):
         """single_projection with min reduction."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         pc = vt.ProjectionCloud(
             pos, dens,
             boundbox=[0., box_size, 0., box_size, 0., box_size])
@@ -258,10 +245,11 @@ class TestSingleProjectionReduction:
             start, end, reduction='min')
         np.testing.assert_allclose(min_val, np.min(dens[cell_ids]))
 
-    def test_single_projection_max_multifield(self):
+    def test_single_projection_max_multifield(self, arepo_snap):
         """single_projection max with multi-field: 2*dens max = 2 * dens max."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         fields = np.column_stack([dens, 2 * dens])
         pc = vt.ProjectionCloud(
             pos, fields,
@@ -274,10 +262,11 @@ class TestSingleProjectionReduction:
         assert max_vals.shape == (2,)
         np.testing.assert_allclose(max_vals[1], 2 * max_vals[0], rtol=1e-12)
 
-    def test_single_projection_invalid_reduction(self):
+    def test_single_projection_invalid_reduction(self, arepo_snap):
         """Invalid reduction string should raise ValueError."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         pc = vt.ProjectionCloud(
             pos, dens,
             boundbox=[0., box_size, 0., box_size, 0., box_size])

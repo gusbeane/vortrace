@@ -8,8 +8,16 @@ The format is chosen via the *fmt* parameter on save, and auto-detected
 from the file extension on load.
 """
 
+from __future__ import annotations
+
 import json
+from typing import TYPE_CHECKING
+
 import numpy as np
+from numpy.typing import ArrayLike
+
+if TYPE_CHECKING:
+    from vortrace.vortrace import ProjectionCloud
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +48,10 @@ def _detect_format(filename):
 # Grid I/O
 # ---------------------------------------------------------------------------
 
-def save_grid(filename, data, *, extent=None, metadata=None, fmt="npz"):
+def save_grid(filename: str, data: ArrayLike, *,
+              extent: ArrayLike | None = None,
+              metadata: dict | None = None,
+              fmt: str = "npz") -> None:
     """Save a 2-D projection array to disk.
 
     Parameters
@@ -78,7 +89,7 @@ def save_grid(filename, data, *, extent=None, metadata=None, fmt="npz"):
         raise ValueError(f"Unknown format: {fmt!r}. Use 'npz' or 'hdf5'.")
 
 
-def load_grid(filename):
+def load_grid(filename: str) -> tuple[np.ndarray, dict]:
     """Load a projection grid saved by :func:`save_grid`.
 
     The format is auto-detected from the file extension.
@@ -123,7 +134,8 @@ def load_grid(filename):
 # Cloud I/O
 # ---------------------------------------------------------------------------
 
-def save_cloud(filename, cloud, *, fmt="npz"):
+def save_cloud(filename: str, cloud: ProjectionCloud, *,
+               fmt: str = "npz") -> None:
     """Save a :class:`~vortrace.vortrace.ProjectionCloud` to disk.
 
     Only the data needed to reconstruct the cloud (positions, fields,
@@ -164,7 +176,7 @@ def save_cloud(filename, cloud, *, fmt="npz"):
         raise ValueError(f"Unknown format: {fmt!r}. Use 'npz' or 'hdf5'.")
 
 
-def load_cloud(filename):
+def load_cloud(filename: str) -> ProjectionCloud:
     """Load a ProjectionCloud saved by :func:`save_cloud`.
 
     The KD-tree is rebuilt automatically during construction.

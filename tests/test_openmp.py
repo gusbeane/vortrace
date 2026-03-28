@@ -16,7 +16,6 @@ import sys
 import tempfile
 import time
 
-import h5py as h5
 import numpy as np
 import pytest
 
@@ -78,15 +77,6 @@ def _run_projection_subprocess(snapname, npix, nthreads, outfile=''):
     return None
 
 
-def _read_arepo_snap(snapname):
-    """Read particle data from an AREPO snapshot."""
-    with h5.File(snapname, mode='r') as f:
-        pos = np.array(f['PartType0']['Coordinates'])
-        dens = np.array(f['PartType0']['Density'])
-        box_size = f['Parameters'].attrs['BoxSize']
-    return pos, dens, box_size
-
-
 def _make_projection(pos, dens, box_size, npix=128):
     """Run a grid projection and return the result array."""
     length = 75.0
@@ -138,9 +128,11 @@ class TestOpenMPCorrectness:
             dat1, dat2,
             err_msg="Results differ between 1 thread and 2 threads")
 
-    def test_openmp_matches_reference(self):
+    def test_openmp_matches_reference(self, arepo_snap):
         """Multi-threaded result must match the stored reference data."""
-        pos, dens, box_size = _read_arepo_snap(self.snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         dat = _make_projection(pos, dens, box_size, npix=128)
         ref_dat = np.load('tests/test_data/galaxy_interaction-proj.npy')
         np.testing.assert_array_almost_equal(dat, ref_dat, decimal=14)

@@ -3,7 +3,7 @@ name = "vortrace"
 version = "0.1"
 description = "Fast projections through Voronoi meshes."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 authors = [
   { name = "Angus Beane", email = "angus.beane@cfa.harvard.edu" },
@@ -13,12 +13,13 @@ authors = [
 dependencies = [
   "numpy",
   "numba",
-  "pybind11>=2.6.0",
 ]
 
 classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux",
+  "License :: OSI Approved :: MIT License",
 ]
 
 [project.optional-dependencies]

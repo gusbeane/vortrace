@@ -4,9 +4,17 @@
 ``import vortrace.plot`` succeeds even without matplotlib installed.
 """
 
+from __future__ import annotations
 
-def plot_grid(data, *, extent=None, ax=None, log=True, cmap="inferno",
-              colorbar=True, label=None, **imshow_kwargs):
+from typing import Any
+
+from numpy.typing import ArrayLike
+
+
+def plot_grid(data: ArrayLike, *, extent: ArrayLike | None = None,
+              ax: Any = None, log: bool = True, cmap: str = "inferno",
+              colorbar: bool = True, label: str | None = None,
+              **imshow_kwargs: Any) -> tuple[Any, Any, Any]:
     """Display a 2-D projection grid as an image.
 
     Parameters
@@ -61,7 +69,8 @@ def plot_grid(data, *, extent=None, ax=None, log=True, cmap="inferno",
     return fig, ax, im
 
 
-def plot_ray(s_vals, dens, *, ax=None, log=True, **plot_kwargs):
+def plot_ray(s_vals: ArrayLike, dens: ArrayLike, *, ax: Any = None,
+             log: bool = True, **plot_kwargs: Any) -> tuple[Any, Any]:
     """Plot a 1-D ray density profile.
 
     Parameters

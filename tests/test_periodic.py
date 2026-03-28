@@ -207,7 +207,7 @@ class TestPeriodicValidation:
         fields = np.ones(2)
         boundbox = [0.0, box, 0.0, box, 0.0, box]
 
-        with pytest.raises(RuntimeError, match="outside the bounding box"):
+        with pytest.raises(ValueError, match="outside the bounding box"):
             vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
 
     def test_error_if_particles_below_box(self):
@@ -218,7 +218,7 @@ class TestPeriodicValidation:
         fields = np.ones(2)
         boundbox = [0.0, box, 0.0, box, 0.0, box]
 
-        with pytest.raises(RuntimeError, match="outside the bounding box"):
+        with pytest.raises(ValueError, match="outside the bounding box"):
             vt.ProjectionCloud(pos, fields, boundbox=boundbox, periodic=True)
 
     def test_no_error_if_particles_inside_box(self):

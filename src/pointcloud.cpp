@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 #define TOLERANCE 1E-9
 
@@ -24,7 +25,7 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
 
   // Check to ensure pos has correct dimensions
   if (buf_pos.ndim != 2)
-    throw std::runtime_error("pos array must be two-dimensional");
+    throw std::invalid_argument("pos array must be two-dimensional");
 
   // fields_in can be 1D (npart,) or 2D (npart, nfields)
   size_t npart_in;
@@ -35,13 +36,13 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     nfields = buf_fields.shape[1];
     npart_in = buf_fields.shape[0];
   } else {
-    throw std::runtime_error("fields array must be one-dimensional or two-dimensional");
+    throw std::invalid_argument("fields array must be one-dimensional or two-dimensional");
   }
 
   // Check to ensure they have the same number of particles.
   if (buf_pos.shape[0] != (ssize_t)npart_in)
   {
-    throw std::runtime_error("Input sizes must match: pos has " +
+    throw std::invalid_argument("Input sizes must match: pos has " +
       std::to_string(buf_pos.shape[0]) + " rows but fields has " +
       std::to_string(npart_in));
   }
@@ -173,7 +174,7 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     if (pmin[0] < subbox[0] || pmax[0] > subbox[1] ||
         pmin[1] < subbox[2] || pmax[1] > subbox[3] ||
         pmin[2] < subbox[4] || pmax[2] > subbox[5]) {
-      throw std::runtime_error(
+      throw std::invalid_argument(
         "Periodic mode: some particles lie outside the bounding box. "
         "All particles must be within the periodic domain.");
     }
@@ -193,6 +194,20 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
   }
 
   npart = pts.size();
+
+  // Check if fields constitute valid RGBA for volume rendering
+  valid_rgba = false;
+  if (nfields == 4 && npart > 0) {
+    valid_rgba = true;
+    for (size_t i = 0; i < npart; i++) {
+      for (size_t c = 0; c < 3; c++) {
+        Float val = fields[i * nfields + c];
+        if (val < 0.0 || val > 1.0) { valid_rgba = false; break; }
+      }
+      if (!valid_rgba) break;
+      if (fields[i * nfields + 3] < 0.0) { valid_rgba = false; break; }
+    }
+  }
 
   if (vortrace::verbose) {
     if (!periodic)
