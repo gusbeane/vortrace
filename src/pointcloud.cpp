@@ -1,7 +1,5 @@
 #include "pointcloud.hpp"
 #include <chrono>
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -10,43 +8,19 @@
 
 #define TOLERANCE 1E-9
 
-namespace py = pybind11;
-
-void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fields_in,
-                            const std::array<Float,6> newsubbox,
-                            py::array_t<double> vol,
+void PointCloud::loadPoints(const double* pos_in, size_t npart_in,
+                            const double* fields_in, size_t npart_fields, size_t nfields_in,
+                            const std::array<Float,6>& newsubbox,
+                            const double* vol, size_t nvol,
                             bool periodic_in)
 {
-  py::buffer_info buf_pos = pos_in.request();
-  py::buffer_info buf_fields = fields_in.request();
-
-  auto *pos_in_ptr = static_cast<double *>(buf_pos.ptr);
-  auto *fields_in_ptr = static_cast<double *>(buf_fields.ptr);
-
-  // Check to ensure pos has correct dimensions
-  if (buf_pos.ndim != 2)
-    throw std::invalid_argument("pos array must be two-dimensional");
-
-  // fields_in can be 1D (npart,) or 2D (npart, nfields)
-  size_t npart_in;
-  if (buf_fields.ndim == 1) {
-    nfields = 1;
-    npart_in = buf_fields.shape[0];
-  } else if (buf_fields.ndim == 2) {
-    nfields = buf_fields.shape[1];
-    npart_in = buf_fields.shape[0];
-  } else {
-    throw std::invalid_argument("fields array must be one-dimensional or two-dimensional");
-  }
-
-  // Check to ensure they have the same number of particles.
-  if (buf_pos.shape[0] != (ssize_t)npart_in)
-  {
+  if (npart_in != npart_fields) {
     throw std::invalid_argument("Input sizes must match: pos has " +
-      std::to_string(buf_pos.shape[0]) + " rows but fields has " +
-      std::to_string(npart_in));
+      std::to_string(npart_in) + " rows but fields has " +
+      std::to_string(npart_fields));
   }
 
+  nfields = nfields_in;
   subbox = newsubbox;
   periodic = periodic_in;
 
@@ -61,22 +35,18 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
   orig_ids.clear();
 
   // Warn if any cells are small enough to cause tolerance issues
-  {
-    py::buffer_info buf_vol_check = vol.request();
-    if (buf_vol_check.size > 0) {
-      auto *vptr = static_cast<double *>(buf_vol_check.ptr);
-      double min_vol = std::numeric_limits<double>::max();
-      for (ssize_t i = 0; i < buf_vol_check.size; i++) {
-        if (vptr[i] > 0 && vptr[i] < min_vol) min_vol = vptr[i];
-      }
-      if (min_vol < std::numeric_limits<double>::max()) {
-        double min_radius = std::cbrt(3.0 * min_vol / (4.0 * M_PI));
-        if (min_radius < 1e-6) {
-          PyErr_WarnEx(PyExc_UserWarning,
-            "Some cells have radii smaller than 1e-6, which approaches the "
-            "internal ray-tracing tolerance (1e-9). Results may be unreliable "
-            "for very small cells. Consider rescaling your coordinate system.", 1);
-        }
+  if (nvol > 0) {
+    double min_vol = std::numeric_limits<double>::max();
+    for (size_t i = 0; i < nvol; i++) {
+      if (vol[i] > 0 && vol[i] < min_vol) min_vol = vol[i];
+    }
+    if (min_vol < std::numeric_limits<double>::max()) {
+      double min_radius = std::cbrt(3.0 * min_vol / (4.0 * M_PI));
+      if (min_radius < 1e-6) {
+        vortrace::warn(
+          "Some cells have radii smaller than 1e-6, which approaches the "
+          "internal ray-tracing tolerance (1e-9). Results may be unreliable "
+          "for very small cells. Consider rescaling your coordinate system.");
       }
     }
   }
@@ -87,22 +57,20 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     Float dy = subbox[3] - subbox[2];
     Float dz = subbox[5] - subbox[4];
 
-    py::buffer_info buf_vol = vol.request();
-    if (buf_vol.size > 0) {
+    if (nvol > 0) {
       // Adaptive padding from cell volumes
-      auto *vol_ptr = static_cast<double *>(buf_vol.ptr);
       double max_vol = 0.0;
-      for (ssize_t i = 0; i < buf_vol.size; i++) {
-        if (vol_ptr[i] > max_vol) max_vol = vol_ptr[i];
+      for (size_t i = 0; i < nvol; i++) {
+        if (vol[i] > max_vol) max_vol = vol[i];
       }
       double max_radius = std::cbrt(3.0 * max_vol / (4.0 * M_PI));
       pad = 10.0 * max_radius;
     } else {
       // Fallback: uniform 15% of longest box side
       pad = 0.15 * std::max({dx, dy, dz});
-      PyErr_WarnEx(PyExc_UserWarning,
+      vortrace::warn(
         "No cell volumes provided; using 15% of longest box side as "
-        "padding. Pass vol= for adaptive padding.", 1);
+        "padding. Pass vol= for adaptive padding.");
     }
 
     Float xmin = subbox[0] - pad;
@@ -117,9 +85,9 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     // Filter particles into padded bounding box
     for(size_t i = 0; i < npart_in; i++)
     {
-      double px = pos_in_ptr[i*3 + 0];
-      double py_val = pos_in_ptr[i*3 + 1];
-      double pz = pos_in_ptr[i*3 + 2];
+      double px = pos_in[i*3 + 0];
+      double py_val = pos_in[i*3 + 1];
+      double pz = pos_in[i*3 + 2];
 
       if (px >= xmin && px <= xmax &&
           py_val >= ymin && py_val <= ymax &&
@@ -132,7 +100,7 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
         pts.push_back(pt);
 
         for(size_t f = 0; f < nfields; f++)
-          fields.push_back(fields_in_ptr[i * nfields + f]);
+          fields.push_back(fields_in[i * nfields + f]);
 
         orig_ids.push_back(i);
       }
@@ -154,9 +122,9 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     for(size_t i = 0; i < npart_in; i++)
     {
       Point pt;
-      pt[0] = pos_in_ptr[i*3 + 0];
-      pt[1] = pos_in_ptr[i*3 + 1];
-      pt[2] = pos_in_ptr[i*3 + 2];
+      pt[0] = pos_in[i*3 + 0];
+      pt[1] = pos_in[i*3 + 1];
+      pt[2] = pos_in[i*3 + 2];
       pts.push_back(pt);
 
       for (int d = 0; d < 3; d++) {
@@ -165,7 +133,7 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
       }
 
       for(size_t f = 0; f < nfields; f++)
-        fields.push_back(fields_in_ptr[i * nfields + f]);
+        fields.push_back(fields_in[i * nfields + f]);
 
       orig_ids.push_back(i);
     }
@@ -184,10 +152,10 @@ void PointCloud::loadPoints(py::array_t<double> pos_in, py::array_t<double> fiel
     for (int d = 0; d < 3; d++) {
       double extent = pmax[d] - pmin[d];
       if (extent < extent_threshold * box_size[d]) {
-        PyErr_WarnEx(PyExc_UserWarning,
+        vortrace::warn(
           "Periodic mode: particle extent is less than 60% of the bounding "
           "box in at least one dimension. The bounding box may be too large "
-          "for the particle distribution.", 1);
+          "for the particle distribution.");
         break;
       }
     }

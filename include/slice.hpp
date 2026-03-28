@@ -4,11 +4,6 @@
 #include "pointcloud.hpp"
 #include "mytypes.hpp"
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
-
 class Slice
 {
   private:
@@ -25,8 +20,10 @@ class Slice
 
     void makeSlice(const PointCloud &cloud);
     void saveSlice(const std::string savename) const;
-    py::array_t<double> returnSlice(void) const;
 
+    const std::vector<Float>& getSliceData() const { return slice_data; }
+    size_t getNfields() const { return nfields; }
+    std::array<size_t,2> getNpix() const { return npix; }
 };
 
 #endif

@@ -5,11 +5,6 @@
 #include "ray.hpp"
 #include "mytypes.hpp"
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
-
 class Projection
 {
   private:
@@ -21,10 +16,13 @@ class Projection
     std::vector<Float> proj_data;  // flat, ngrid * nfields
 
   public:
-    Projection(py::array_t<Float> pos_start, py::array_t<Float> pos_end);
+    Projection(const Float* pos_start, const Float* pos_end, size_t ngrid);
 
     void makeProjection(const PointCloud &cloud, ReductionMode reduction = ReductionMode::Sum);
-    py::array_t<double> returnProjection(void) const;
+
+    const std::vector<Float>& getProjectionData() const { return proj_data; }
+    size_t getNgrid() const { return ngrid; }
+    size_t getNfields() const { return nfields; }
 };
 
 #endif

@@ -2,12 +2,8 @@
 #define POINT_CLOUD_HPP
 
 #include "mytypes.hpp"
+#include <memory>
 #include <nanoflann.hpp>
-
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
 
 //Forward declare for subsequent typedef
 class PointCloud;
@@ -36,11 +32,12 @@ class PointCloud
   public:
 
     //Load all particles, filter to padded subbox, build internal arrays.
-    //fields_in can be 1D (npart,) or 2D (npart, nfields).
-    //vol is optional per-cell volumes for adaptive padding.
-    void loadPoints(py::array_t<double> pos, py::array_t<double> fields_in,
-                    const std::array<Float,6> newsubbox,
-                    py::array_t<double> vol = py::array_t<double>(),
+    //fields is flat, row-major: fields[i * nfields_in + f].
+    //vol is optional per-cell volumes (length nvol) for adaptive padding.
+    void loadPoints(const double* pos, size_t npart,
+                    const double* fields, size_t npart_fields, size_t nfields_in,
+                    const std::array<Float,6>& subbox,
+                    const double* vol = nullptr, size_t nvol = 0,
                     bool periodic = false);
     void buildTree();
 

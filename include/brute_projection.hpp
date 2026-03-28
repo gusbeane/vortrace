@@ -5,11 +5,6 @@
 #include "ray.hpp"
 #include "mytypes.hpp"
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
-
 class BruteProjection
 {
   private:
@@ -25,8 +20,10 @@ class BruteProjection
 
     void makeProjection(const PointCloud &cloud, ReductionMode reduction = ReductionMode::Sum);
     void saveProjection(const std::string savename) const;
-    py::array_t<double> returnProjection(void) const;
 
+    const std::vector<Float>& getProjectionData() const { return proj_data; }
+    size_t getNfields() const { return nfields; }
+    std::array<size_t,3> getNpix() const { return npix; }
 };
 
 #endif
