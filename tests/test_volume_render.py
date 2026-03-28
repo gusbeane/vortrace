@@ -1,6 +1,5 @@
 """Tests for volume rendering reduction mode."""
 
-import h5py as h5
 import numpy as np
 import pytest
 from vortrace import vortrace as vt
@@ -163,18 +162,11 @@ class TestVolumeRenderValidation:
 class TestVolumeRenderProjection:
     """Test volume rendering through grid and batch projection methods."""
 
-    def read_arepo_snap(self, snapname):
-        f = h5.File(snapname, mode='r')
-        pos = np.array(f['PartType0']['Coordinates'])
-        dens = np.array(f['PartType0']['Density'])
-        box_size = f['Parameters'].attrs['BoxSize']
-        f.close()
-        return pos, dens, box_size
-
-    def test_grid_projection_shape(self):
+    def test_grid_projection_shape(self, arepo_snap):
         """Grid projection with volume rendering returns (npix, npix, 3)."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
 
         # Construct 4 fields: R=dens/max, G=dens/max, B=dens/max,
         # alpha=dens/max
@@ -196,10 +188,11 @@ class TestVolumeRenderProjection:
         # RGB values should be non-negative
         assert np.all(dat >= 0)
 
-    def test_projection_shape(self):
+    def test_projection_shape(self, arepo_snap):
         """projection() with volume rendering returns (N, 3)."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         dmax = dens.max()
         fields = np.column_stack([
             dens / dmax, dens / dmax, dens / dmax, dens / dmax
@@ -222,10 +215,11 @@ class TestVolumeRenderProjection:
         assert dat.shape == (N, 3)
         assert np.all(dat >= 0)
 
-    def test_single_projection_returns_3(self):
+    def test_single_projection_returns_3(self, arepo_snap):
         """single_projection with volume rendering returns 3-element array."""
-        snapname = 'tests/test_data/galaxy_interaction.hdf5'
-        pos, dens, box_size = self.read_arepo_snap(snapname)
+        pos = arepo_snap["pos"]
+        dens = arepo_snap["dens"]
+        box_size = arepo_snap["box_size"]
         dmax = dens.max()
         fields = np.column_stack([
             dens / dmax, dens / dmax, dens / dmax, dens / dmax
