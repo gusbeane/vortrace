@@ -1,5 +1,7 @@
 # ``vortrace``
 
+[![Documentation](https://readthedocs.org/projects/vortrace/badge/?version=latest)](https://vortrace.readthedocs.io/en/latest/)
+
 Exact projections through voronoi meshes faster than you can say "I have a problem with your AGN model."
 
 ## What does ``vortrace`` do?
