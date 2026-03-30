@@ -1,4 +1,4 @@
-#include "class_includes.hpp"
+#include "vortrace.hpp"
 #include "ray.hpp"
 #include "reduction.hpp"
 #include <pybind11/pybind11.h>

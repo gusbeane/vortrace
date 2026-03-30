@@ -13,11 +13,11 @@ Ray walking
 
 The walk phase traces a ray through the mesh and records the ordered list of
 cell crossings as **segments** (cell ID, entry distance, exit distance).  It
-uses a recursive split-point algorithm that minimises kDTree queries.
+uses a recursive split-point algorithm that minimizes kDTree queries.
 
 ``vortrace`` starts by constructing a kDTree using
 `nanoflann <https://github.com/jlblancoc/nanoflann>`_ to allow for efficient
-nearest-neighbour searches.  Then, for a ray from ``p_a`` to ``p_b``:
+nearest-neighbor searches.  Then, for a ray from ``p_a`` to ``p_b``:
 
 1. Assume ``p_a`` and ``p_b`` are in neighbouring Voronoi cells.  Find those
    cells (``v_a`` and ``v_b``) quickly using the kDTree.
