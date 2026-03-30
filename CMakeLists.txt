@@ -61,11 +61,11 @@ if(BUILD_PYTHON_BINDINGS)
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/vortrace
   )
 
-  target_link_libraries(Cvortrace PRIVATE vortrace_core pybind11::headers Python3::Python)
+  target_link_libraries(Cvortrace PRIVATE vortrace_core pybind11::headers)
 
   # --- install rule for the Python extension -------
   install(TARGETS Cvortrace
-          LIBRARY DESTINATION ${Python3_SITEARCH}/vortrace)
+          LIBRARY DESTINATION vortrace)
 endif()
 
 # --- C++ unit tests with Catch2 --------------------
