@@ -4,7 +4,7 @@ Degenerate Geometry
 The basic :doc:`algorithm <algorithm>` assumes that the split point ``p_s``
 lands cleanly inside a single Voronoi cell.  In practice, ``p_s`` can land
 exactly on a vertex, edge, or face of the Voronoi mesh, making the
-nearest-neighbour query ambiguous.  This page describes how ``vortrace``
+nearest-neighbor query ambiguous.  This page describes how ``vortrace``
 detects and resolves these degenerate cases.
 
 Split-point classification
@@ -86,7 +86,7 @@ parallel to the ray and no analytic intersection exists.
 
 In this case, ``findSplitPointDistance`` falls back to a **binary search**
 along the current segment ``[s_lo, s_hi]``.  At each step it queries the
-nearest neighbour at the midpoint:
+nearest neighbor at the midpoint:
 
 - If the midpoint lies in a third cell (neither ``c`` nor ``n``), that
   position is returned so that ``integrate()`` can insert the intermediate
