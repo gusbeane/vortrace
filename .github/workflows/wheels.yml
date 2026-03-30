@@ -8,7 +8,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15-intel, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15-intel, macos-latest]
+        # os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15-intel, macos-latest]
 
     steps:
       - uses: actions/checkout@v6
@@ -23,10 +24,8 @@ jobs:
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
-        # to supply options, put them in 'env', like:
-        # env:
-        #   CIBW_SOME_OPTION: value
-        #   ...
+        env:
+          CIBW_BEFORE_ALL_MACOS: brew install libomp
 
       - uses: actions/upload-artifact@v6
         with:
