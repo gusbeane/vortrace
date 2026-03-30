@@ -6,7 +6,6 @@ build:
     python: "3.11"
   apt_packages:
     - cmake
-    - pandoc
 
 sphinx:
   configuration: docs/conf.py

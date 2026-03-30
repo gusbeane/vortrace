@@ -9,7 +9,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "nbsphinx",
+    "sphinx_inline_tabs",
+    "sphinx_copybutton",
 ]
 
 # Napoleon settings
@@ -18,6 +19,7 @@ napoleon_numpy_docstyle = True
 
 # Autodoc settings
 autodoc_member_order = "bysource"
+autodoc_typehints = "none"
 
 # Intersphinx mapping
 intersphinx_mapping = {
@@ -25,9 +27,6 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
-
-# nbsphinx settings
-nbsphinx_execute = "never"
 
 # Theme
 html_theme = "furo"
