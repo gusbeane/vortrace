@@ -41,7 +41,7 @@ endif()
 # --- build the Python extension from bindings only --
 if(BUILD_PYTHON_BINDINGS)
   # find Python
-  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 
   # ask pip-installed pybind11 where its CMake files live
   execute_process(
