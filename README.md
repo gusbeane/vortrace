@@ -73,7 +73,7 @@ img = pc.grid_projection(extent, npix, bounds, reduction='volume')
 # img is a (npix, npix, 3) RGB array
 ```
 
-See the [QuickStart notebook](docs/QuickStart.ipynb) for a complete example with a sample transfer function.
+See the [volume rendering tutorial](https://vortrace.readthedocs.io/en/latest/tutorials/volume_rendering.html) for a complete example with a sample transfer function.
 
 ## How Does ``vortrace`` Work?
 
