@@ -30,7 +30,7 @@ Homepage = "https://github.com/gusbeane/vortrace"
 dev  = ["h5py","matplotlib","pylint","pytest"]
 test = ["h5py","matplotlib","pylint","pytest"]
 plot = ["matplotlib"]
-docs = ["sphinx>=7.0", "furo", "sphinx-inline-tabs", "sphinx-copybutton"]
+docs = ["sphinx>=7.0", "furo", "sphinx-inline-tabs", "sphinx-copybutton", "h5py", "matplotlib"]
 
 [build-system]
 requires = [

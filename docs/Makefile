@@ -11,7 +11,16 @@ BUILDDIR      = _build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile
+# Generate tutorial images from test data.
+images:
+	python generate_images.py
+
+# Force-regenerate images (delete first, then rebuild).
+images-clean:
+	rm -f images/*.png
+	python generate_images.py
+
+.PHONY: help images images-clean Makefile
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

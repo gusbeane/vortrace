@@ -111,15 +111,10 @@ Plotting the result
       axes[1].set_ylabel("z")
       axes[1].set_title("xz projection")
 
-.. image:: /images/grid_projection_xy.png
-   :width: 80%
+.. image:: /images/grid_projection.png
+   :width: 100%
    :align: center
-   :alt: xy density projection
-
-.. image:: /images/grid_projection_xz.png
-   :width: 80%
-   :align: center
-   :alt: xz density projection
+   :alt: Side-by-side xy and xz density projections
 
 Projection planes
 -----------------

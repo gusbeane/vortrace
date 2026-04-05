@@ -18,6 +18,7 @@ run/
 .DS_Store
 .cache/
 docs/_build/
+docs/images/*.png
 pytest-of-abeane/
 .claude/
 paper/paper.crossref
