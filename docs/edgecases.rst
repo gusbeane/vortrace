@@ -2,7 +2,7 @@ Degenerate Geometry
 ===================
 
 The basic :doc:`algorithm <algorithm>` assumes that the split point ``p_s``
-lands cleanly inside a single Voronoi cell.  In practice, ``p_s`` can land
+lands cleanly inside a single Voronoi cell.  In rare cases, ``p_s`` can land
 exactly on a vertex, edge, or face of the Voronoi mesh, making the
 nearest-neighbor query ambiguous.  This page describes how ``vortrace``
 detects and resolves these degenerate cases.
@@ -12,7 +12,7 @@ Split-point classification
 
 After computing the analytic split point between cells ``c`` and ``n``,
 ``vortrace`` queries the three nearest Voronoi generators (3-NN) at that
-position and builds the **equidistant set** -- all generators whose squared
+position and builds the **equidistant set** -- all mesh generating points whose squared
 distance is within a tolerance of the nearest.
 
 The classification checks whether ``c`` or ``n`` appears in this set:
@@ -75,7 +75,7 @@ that lands in a cell other than ``c`` or ``n`` is accepted.
 
 If ``sc == sn`` (the same cell on both sides), a single intermediate point is
 inserted.  If ``sc != sn``, both are inserted at the split-point position and
-the zero-width segment between them is skipped during traversal.
+the zero-width segment between them is skipped during traversal. Specifically, the traversal list will look like ``current(c) → sc(s) → sn(s) → next(n)`` with sc and sn at the same point.
 
 Parallel bisectors
 ------------------

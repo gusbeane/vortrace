@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-This page shows the simplest possible projection in both Python and C++.  For
+A very simple example in both Python and C++. The `galaxy_interaction.hdf5` snapshot comes from the public Arepo test suite. For
 more detailed examples, see the :doc:`tutorials/index`.
 
 Load data and project

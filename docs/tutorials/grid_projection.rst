@@ -2,8 +2,7 @@ Grid Projection
 ===============
 
 A grid projection traces a regular 2D grid of rays through the mesh and
-integrates a field along each ray.  This is the most common operation --
-it produces images like column density maps.
+integrates a field along each ray. This can be used to make images like column density maps.
 
 Setting up
 ----------

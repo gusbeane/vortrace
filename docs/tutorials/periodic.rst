@@ -9,7 +9,7 @@ of each query point, ensuring correct projections across box boundaries.
 
    Periodic integrals are assumed to lie entirely within a single periodic
    image of the box.  If your ray spans multiple periodic images, you must
-   split it into segments that each fit within one box length.
+   split it into segments that each fit within one box image.
 
 Usage
 -----
@@ -70,13 +70,12 @@ Behavior differences
 
 When ``periodic=True``:
 
-- The bounding box defines the periodic domain.
+- The bounding box defines the periodic domain. The kD-tree wraps queries across boundaries.
 - **No spatial filtering** is applied -- all particles are used regardless
   of the bounding box.  (In non-periodic mode, particles outside the padded
   subbox are discarded to reduce computation.)  If you need to reduce the
   number of particles for performance, filter them yourself before passing
   them to ``vortrace``.
-- The kD-tree wraps queries across boundaries.
 
 .. note::
 
