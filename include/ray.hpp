@@ -73,6 +73,7 @@ class Ray
     const std::vector<Float>& get_min_val() const {return min_val;}
     const std::vector<Float>& get_vol_render_val() const {return vol_render_val;}
     const std::vector<Segment>& get_segments() const {return segments;}
+    std::vector<Segment> take_segments() { return std::move(segments); }
 
 };
 
