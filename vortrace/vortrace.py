@@ -243,8 +243,9 @@ class ProjectionCloud:
                 segment; otherwise return the entry distance.
             reduction: ``'integrate'``/``'sum'``, ``'max'``,
                 ``'min'``, or ``'volume'``.
-            flatten: If *True*, return flat arrays with an offset index instead of
-                per-ray lists.  Only applies to batch (N > 1) inputs.
+            flatten: If *True*, return flat arrays with an offset
+                index instead of per-ray lists.  Only applies to
+                batch (N > 1) inputs.
 
         Returns:
             For a **single ray** (input shape ``(3,)`` or ``(1, 3)``):
