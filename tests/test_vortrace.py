@@ -28,7 +28,7 @@ class TestProjection:
 
         np.testing.assert_array_almost_equal(dat, ref_dat, decimal=14)
 
-        pc.single_projection(np.array([0, 0, 0]),
+        pc.traced_projection(np.array([0, 0, 0]),
                              np.array([box_size, box_size, box_size]))
 
 def make_cubic_lattice(n=5):
@@ -53,7 +53,7 @@ class TestSameCell:
         start = [0.5, 0.5, 0.5]
         end = [0.6, 0.6, 0.6]
 
-        result = pc.single_projection(np.array(start), np.array(end))[0]
+        result = pc.traced_projection(np.array(start), np.array(end))[0]
         expected = np.linalg.norm(np.array(end) - np.array(start))
 
         np.testing.assert_allclose(result, expected, rtol=1e-6)

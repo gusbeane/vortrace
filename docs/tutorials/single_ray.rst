@@ -1,10 +1,12 @@
-Single Ray Analysis
-===================
+Traced Projections
+==================
 
-Sometimes you need to inspect the full trace along a single ray -- which
+Sometimes you need to inspect the full trace along a ray -- which
 cells it crosses, the path length through each cell, and the field value in
 each cell. This is useful for debugging, visualization, and understanding
 the structure of the mesh along a line of sight.
+
+``traced_projection`` works for both single rays and batches.
 
 Tracing a single ray
 --------------------
@@ -24,7 +26,7 @@ Tracing a single ray
       pt_start = np.array([BoxSize / 2 + 3, BoxSize / 2 + 10.5, 0])
       pt_end   = np.array([BoxSize / 2 + 3, BoxSize / 2 + 10.5, BoxSize])
 
-      dens, cell_ids, s_vals, ds_vals = pc.single_projection(pt_start, pt_end)
+      dens, cell_ids, s_vals, ds_vals = pc.traced_projection(pt_start, pt_end)
 
       # dens      -- integrated column density (scalar for single field)
       # cell_ids  -- original particle index for each segment
@@ -83,6 +85,49 @@ Each segment records:
 - **ds** -- path length through the cell (``s_exit - s_enter``)
 
 The segments are returned in order from start to end of the ray.
+
+Batch segment queries
+---------------------
+
+Pass an ``(N, 3)`` array of start and end points to get per-segment data
+for many rays at once. The rays are traced in parallel using OpenMP.
+
+.. tab:: Python
+
+   .. code-block:: python
+
+      # Define N rays
+      pts_start = np.zeros((N, 3))
+      pts_end = np.zeros((N, 3))
+      pts_start[:, :2] = ray_positions  # vary x, y
+      pts_start[:, 2] = 0.0
+      pts_end[:, :2] = ray_positions
+      pts_end[:, 2] = BoxSize
+
+      # Returns lists of arrays (one per ray)
+      values, cell_ids_list, s_vals_list, ds_vals_list = pc.traced_projection(
+          pts_start, pts_end
+      )
+
+      # Access segments for ray i
+      for i in range(N):
+          ray_cells = cell_ids_list[i]
+          ray_ds    = ds_vals_list[i]
+          ray_smid  = s_vals_list[i]
+
+   For performance-critical code, use ``flatten=True`` to get flat
+   CSR-style arrays:
+
+   .. code-block:: python
+
+      values, cell_ids, s_vals, ds_vals, offsets = pc.traced_projection(
+          pts_start, pts_end, flatten=True
+      )
+
+      # Ray i's segments are at offsets[i]:offsets[i+1]
+      for i in range(N):
+          ray_cells = cell_ids[offsets[i]:offsets[i+1]]
+          ray_ds    = ds_vals[offsets[i]:offsets[i+1]]
 
 .. seealso::
 

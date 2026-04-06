@@ -116,11 +116,11 @@ class TestMultiField:
         np.testing.assert_allclose(dat[:, 1], 3 * dat[:, 0], rtol=1e-6)
 
     # ------------------------------------------------------------------
-    # single_projection multi-field
+    # traced_projection multi-field
     # ------------------------------------------------------------------
 
-    def test_single_projection_multifield(self, arepo_snap):
-        """single_projection with multi-field returns array dens."""
+    def test_traced_projection_multifield(self, arepo_snap):
+        """traced_projection with multi-field returns array dens."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
         box_size = arepo_snap["box_size"]
@@ -133,7 +133,7 @@ class TestMultiField:
         start = np.array([box_size / 2., box_size / 2., 0.1])
         end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
 
-        dens_out, cell_ids, smid, ds = pc.single_projection(start, end)
+        dens_out, cell_ids, smid, ds = pc.traced_projection(start, end)
         assert isinstance(dens_out, np.ndarray)
         assert dens_out.shape == (2,)
         np.testing.assert_allclose(dens_out[1], 5 * dens_out[0], rtol=1e-6)
@@ -212,10 +212,10 @@ class TestReduction:
 
 
 class TestSingleProjectionReduction:
-    """Test single_projection with different reduction modes."""
+    """Test traced_projection with different reduction modes."""
 
-    def test_single_projection_max_reduction(self, arepo_snap):
-        """single_projection with max reduction."""
+    def test_traced_projection_max_reduction(self, arepo_snap):
+        """traced_projection with max reduction."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
         box_size = arepo_snap["box_size"]
@@ -225,13 +225,13 @@ class TestSingleProjectionReduction:
         start = np.array([box_size / 2., box_size / 2., 0.1])
         end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
 
-        max_val, cell_ids, _, _ = pc.single_projection(
+        max_val, cell_ids, _, _ = pc.traced_projection(
             start, end, reduction='max')
         # Max should equal max of field values in intersected cells
         np.testing.assert_allclose(max_val, np.max(dens[cell_ids]))
 
-    def test_single_projection_min_reduction(self, arepo_snap):
-        """single_projection with min reduction."""
+    def test_traced_projection_min_reduction(self, arepo_snap):
+        """traced_projection with min reduction."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
         box_size = arepo_snap["box_size"]
@@ -241,12 +241,12 @@ class TestSingleProjectionReduction:
         start = np.array([box_size / 2., box_size / 2., 0.1])
         end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
 
-        min_val, cell_ids, _, _ = pc.single_projection(
+        min_val, cell_ids, _, _ = pc.traced_projection(
             start, end, reduction='min')
         np.testing.assert_allclose(min_val, np.min(dens[cell_ids]))
 
-    def test_single_projection_max_multifield(self, arepo_snap):
-        """single_projection max with multi-field: 2*dens max = 2 * dens max."""
+    def test_traced_projection_max_multifield(self, arepo_snap):
+        """traced_projection max with multi-field: 2*dens max = 2 * dens max."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
         box_size = arepo_snap["box_size"]
@@ -257,12 +257,12 @@ class TestSingleProjectionReduction:
         start = np.array([box_size / 2., box_size / 2., 0.1])
         end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
 
-        max_vals, _, _, _ = pc.single_projection(
+        max_vals, _, _, _ = pc.traced_projection(
             start, end, reduction='max')
         assert max_vals.shape == (2,)
         np.testing.assert_allclose(max_vals[1], 2 * max_vals[0], rtol=1e-12)
 
-    def test_single_projection_invalid_reduction(self, arepo_snap):
+    def test_traced_projection_invalid_reduction(self, arepo_snap):
         """Invalid reduction string should raise ValueError."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
@@ -273,7 +273,7 @@ class TestSingleProjectionReduction:
         start = np.array([box_size / 2., box_size / 2., 0.1])
         end = np.array([box_size / 2., box_size / 2., box_size - 0.1])
         with pytest.raises(ValueError, match="Unknown reduction"):
-            pc.single_projection(start, end, reduction='bogus')
+            pc.traced_projection(start, end, reduction='bogus')
 
 
 class TestMultiFieldIO:
