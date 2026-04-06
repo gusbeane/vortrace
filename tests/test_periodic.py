@@ -133,7 +133,7 @@ class TestPeriodicKNNDeduplication:
         # Ray along x-axis very close to x=0 boundary
         start = np.array([0.01, 2.5, 2.5])
         end = np.array([4.99, 2.5, 2.5])
-        dens, cell_ids, _, ds = pc.single_projection(start, end)
+        dens, cell_ids, _, ds = pc.traced_projection(start, end)
 
         # All cell IDs should be unique consecutive cells
         assert len(cell_ids) == len(set(cell_ids)), \
@@ -177,7 +177,7 @@ class TestPeriodicRay:
 
         start = np.array([0.5, 2.5, 2.5])
         end = np.array([4.5, 2.5, 2.5])
-        dens, _, _, _ = pc.single_projection(start, end)
+        dens, _, _, _ = pc.traced_projection(start, end)
 
         ray_length = np.linalg.norm(end - start)
         np.testing.assert_allclose(dens, ray_length * density, rtol=1e-10)
@@ -190,7 +190,7 @@ class TestPeriodicRay:
 
         start = np.array([0.01, 2.5, 2.5])
         end = np.array([4.99, 2.5, 2.5])
-        dens, _, _, _ = pc.single_projection(start, end)
+        dens, _, _, _ = pc.traced_projection(start, end)
 
         ray_length = np.linalg.norm(end - start)
         np.testing.assert_allclose(dens, ray_length, rtol=1e-10)

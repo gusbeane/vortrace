@@ -327,7 +327,7 @@ def make_single_ray(pc, rho, box_size):
     pt_start = np.array([box_size / 2 + 3, box_size / 2 + 10.5, 0])
     pt_end = np.array([box_size / 2 + 3, box_size / 2 + 10.5, box_size])
 
-    _, cell_ids, s_vals, _ = pc.single_projection(pt_start, pt_end)
+    _, cell_ids, s_vals, _ = pc.traced_projection(pt_start, pt_end)
 
     fig, ax = vt.plot.plot_ray(s_vals - box_size / 2, rho[cell_ids])
     ax.set_xlabel(f"z [{LENGTH_UNIT}]")

@@ -79,3 +79,9 @@ HEALPix sky map example
 
    All reduction modes (``Sum``, ``Max``, ``Min``, ``VolumeRender``) work
    with arbitrary rays, just as with grid projections.
+
+.. tip::
+
+   If you need per-segment data (cell IDs, path lengths) in addition to the
+   reduced values, use :meth:`~vortrace.ProjectionCloud.traced_projection`
+   instead of ``projection``. See :doc:`single_ray` for details.
