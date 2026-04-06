@@ -367,6 +367,20 @@ class ProjectionCloud:
         return dat
 
     # ------------------------------------------------------------------
+    # Tree serialization helpers (used by vortrace.io)
+    # ------------------------------------------------------------------
+
+    def save_tree_bytes(self) -> bytes | None:
+        """Serialize the kD-tree to bytes, or *None* if not built."""
+        if self._cloud.get_tree_built():
+            return self._cloud.saveTreeToBytes()
+        return None
+
+    def load_tree_bytes(self, data: bytes) -> None:
+        """Restore the kD-tree from a bytes object."""
+        self._cloud.loadTreeFromBytes(data)
+
+    # ------------------------------------------------------------------
     # Convenience I/O wrappers
     # ------------------------------------------------------------------
 

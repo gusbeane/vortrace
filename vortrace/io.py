@@ -162,8 +162,8 @@ def save_cloud(filename: str, cloud: ProjectionCloud, *,
     periodic = getattr(cloud, 'periodic', False)
 
     tree_bytes = None
-    if save_tree and cloud._cloud.get_tree_built():
-        tree_bytes = cloud._cloud.saveTreeToBytes()
+    if save_tree:
+        tree_bytes = cloud.save_tree_bytes()
 
     if fmt == "npz":
         arrays = {"pos": pos, "fields": fields, "boundbox": boundbox,
@@ -234,7 +234,7 @@ def load_cloud(filename: str) -> ProjectionCloud:
         cloud = ProjectionCloud(pos, fields, boundbox=list(boundbox),
                                 vol=vol, periodic=periodic,
                                 _skip_build_tree=True)
-        cloud._cloud.loadTreeFromBytes(tree_bytes)
+        cloud.load_tree_bytes(tree_bytes)
         return cloud
 
     return ProjectionCloud(pos, fields, boundbox=list(boundbox),
