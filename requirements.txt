@@ -1,5 +1,4 @@
 numpy
-numba
 pybind11
 cmake
 scikit-build-core

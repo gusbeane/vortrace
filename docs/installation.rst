@@ -70,7 +70,7 @@ Installation
 Requirements
 ------------
 
-* **Python:** >= 3.8, with ``numpy`` and ``numba`` (installed automatically)
+* **Python:** >= 3.8, with ``numpy`` (installed automatically)
 * **C++:** C++17 compiler (GCC >= 7, Clang >= 5, MSVC 2017+)
 * **CMake:** >= 3.15
 
