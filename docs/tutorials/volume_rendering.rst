@@ -26,42 +26,35 @@ integral over the full ray length from `0` to `s`.
 Defining a transfer function
 -----------------------------
 
-The transfer function maps a cell quantity (e.g. density) to four values:
-red, green, blue, and absorption.  You define this yourself.
+The transfer function maps cell quantities to four values: red, green, blue,
+and absorption.  You define this yourself.  In the example below we use three
+physical channels -- density (red), star-formation rate (green), and
+temperature (blue) -- with density-driven opacity:
 
 .. tab:: Python
 
    .. code-block:: python
 
       import numpy as np
-      import matplotlib as mpl
 
-      def gaussian(x, mean, sigma):
-          return (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
-              -0.5 * ((x - mean) / sigma) ** 2
-          )
+      def lognorm(q, plo=1, phi=99):
+          """Log-normalise positive array *q* to [0, 1]."""
+          lq = np.log10(np.clip(q, q[q > 0].min(), None))
+          lo, hi = np.percentile(lq, plo), np.percentile(lq, phi)
+          return np.clip((lq - lo) / (hi - lo), 0, 1)
 
-      def transfer_function(q):
-          """Map density to (R, G, B, alpha)."""
-          logq = np.log10(q)
-          logq_min = np.percentile(logq, 1)
-          logq_max = np.percentile(logq, 99)
+      dens_norm = lognorm(rho)
+      R = 0.4 * dens_norm
+      G = np.where(sfr > 0, lognorm(np.where(sfr > 0, sfr, 1.0)), 0.0)
 
-          # Map to a colormap
-          norm_val = np.clip((logq - logq_min) / (logq_max - logq_min), 0, 1)
-          rgba = mpl.colormaps["rainbow"](norm_val)
+      # Blue only for hot gas (T > 1.5e6 K), faded in dense regions
+      hot = np.clip((np.log10(np.maximum(T, 1.0)) - np.log10(1.5e6)) / 1.5, 0, 1)
+      B = 3.0 * hot * (1 - dens_norm) ** 2
 
-          # Gaussians for opacity
-          sigma = 0.15 * (logq_max - logq_min)
-          peaks = np.linspace(logq_min, logq_max, 4)
-          logq_clipped = np.clip(logq, logq_min, logq_max)
+      # Opacity: dense gas or hot gas is visible
+      alpha = np.maximum(0.08 * dens_norm ** 4, 0.01 * hot ** 2)
 
-          a = np.zeros(q.shape)
-          for i, peak in enumerate(peaks):
-              lognorm = -4.6 + (-1.2 + 4.6) / (peaks[-1] - peaks[0]) * (peak - peaks[0])
-              a += 10 ** lognorm * gaussian(logq_clipped, peak, sigma)
-
-          return rgba[:, 0], rgba[:, 1], rgba[:, 2], a
+      fields_rgba = np.column_stack([R, G, B, alpha])
 
 .. tab:: C++
 
@@ -69,26 +62,24 @@ red, green, blue, and absorption.  You define this yourself.
 
       #include <cmath>
       #include <vector>
+      #include <algorithm>
 
-      // Apply a transfer function to density values.
-      // Writes R, G, B, alpha into a flat fields array (4 fields per particle).
-      void apply_transfer(const double* rho, size_t n, double* fields) {
-          // Compute log-density range
-          std::vector<double> logq(n);
-          for (size_t i = 0; i < n; i++) logq[i] = std::log10(rho[i]);
-          // ... determine logq_min, logq_max from percentiles ...
-
+      // Build RGBA fields from density, SFR, and temperature.
+      // fields must have space for 4 * n doubles.
+      void transfer(const double* rho, const double* sfr,
+                    const double* T, size_t n, double* fields,
+                    double rho_lo, double rho_hi) {
           for (size_t i = 0; i < n; i++) {
-              double norm = (logq[i] - logq_min) / (logq_max - logq_min);
-              norm = std::max(0.0, std::min(1.0, norm));
+              double d = std::clamp((std::log10(rho[i]) - rho_lo)
+                                    / (rho_hi - rho_lo), 0.0, 1.0);
+              double hot = std::clamp((std::log10(std::max(T[i], 1.0))
+                                       - std::log10(1.5e6)) / 1.5, 0.0, 1.0);
+              double fade = (1 - d) * (1 - d);
 
-              // Map to RGB (implement your own colormap)
-              fields[i * 4 + 0] = /* R */ ;
-              fields[i * 4 + 1] = /* G */ ;
-              fields[i * 4 + 2] = /* B */ ;
-
-              // Opacity from Gaussians
-              fields[i * 4 + 3] = /* alpha */ ;
+              fields[i*4 + 0] = 0.4 * d;                      // R: density
+              fields[i*4 + 1] = sfr[i] > 0 ? /* normalised SFR */ 0 : 0; // G: SFR
+              fields[i*4 + 2] = 3.0 * hot * fade;             // B: temperature
+              fields[i*4 + 3] = std::max(0.08*d*d*d*d, 0.01*hot*hot); // alpha
           }
       }
 
@@ -100,9 +91,6 @@ Running the volume render
    .. code-block:: python
 
       import vortrace as vt
-
-      R, G, B, alpha = transfer_function(rho)
-      fields_rgba = np.column_stack([R, G, B, alpha])
 
       pc_vol = vt.ProjectionCloud(
           pos, fields_rgba, vol=vol,
@@ -134,22 +122,30 @@ Running the volume render
 Displaying the result
 ---------------------
 
+The result is an RGB image. Red is tracing the total density. Green shows the regions with high star formation rate (centers of the galaxies). Blue shows the hot gas, which is mostly on the outskirts.
+
 .. tab:: Python
 
    .. code-block:: python
 
       import matplotlib.pyplot as plt
 
+      # Normalise each channel independently, then gamma-stretch
+      img = image.copy()
+      for c in range(3):
+          mx = img[:, :, c].max()
+          if mx > 0:
+              img[:, :, c] /= mx
+      img = np.clip(img ** (1 / 2.0), 0, 1)  # gamma = 2
+
       fig, ax = plt.subplots(figsize=(6, 6))
-      img = image / image.max()  # normalize to [0, 1]
       ax.imshow(np.swapaxes(img, 0, 1), origin="lower",
                 extent=[-L / 2, L / 2, -L / 2, L / 2])
-      ax.set_xlabel("x")
-      ax.set_ylabel("y")
-      ax.set_title("Volume rendering")
+      ax.set_xlabel("x [kpc]")
+      ax.set_ylabel("y [kpc]")
 
 .. image:: /images/volume_rendering.png
-   :width: 70%
+   :width: 80%
    :align: center
    :alt: Volume rendering of a galaxy interaction
 

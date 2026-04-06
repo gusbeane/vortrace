@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -81,8 +81,9 @@ def load_galaxy():
         mass = np.array(f["PartType0/Masses"])
         box_size = float(f["Parameters"].attrs["BoxSize"])
         temperature = _compute_temperature(f)
+        sfr = np.array(f["PartType0/StarFormationRate"])
     vol = mass / rho
-    return pos, rho, vol, temperature, box_size
+    return pos, rho, vol, temperature, sfr, box_size
 
 
 def load_cosmo():
@@ -192,57 +193,94 @@ def make_multifield(pos, rho, vol, temperature, box_size):
     _save(fig, "multifield.png")
 
 
-def make_volume_rendering(pos, rho, vol, box_size):
-    """volume_rendering.png — volume rendering with a transfer function."""
+def make_volume_rendering(pos, rho, vol, temperature, sfr, box_size):
+    """volume_rendering.png — four-panel volume rendering.
 
-    def gaussian(x, mean, sigma):
-        return (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
-            -0.5 * ((x - mean) / sigma) ** 2
-        )
-
-    def transfer_function(q):
-        logq = np.log10(q)
-        logq_min = np.percentile(logq, 1)
-        logq_max = np.percentile(logq, 99)
-
-        norm_val = np.clip((logq - logq_min) / (logq_max - logq_min), 0, 1)
-        rgba = matplotlib.colormaps["rainbow"](norm_val)
-
-        sigma = 0.15 * (logq_max - logq_min)
-        peaks = np.linspace(logq_min, logq_max, 4)
-        logq_clipped = np.clip(logq, logq_min, logq_max)
-
-        a = np.zeros(q.shape)
-        for peak in peaks:
-            lognorm = -4.6 + (-1.2 + 4.6) / (peaks[-1] - peaks[0]) * (peak - peaks[0])
-            a += 10 ** lognorm * gaussian(logq_clipped, peak, sigma)
-
-        return rgba[:, 0], rgba[:, 1], rgba[:, 2], a
-
-    R, G, B, alpha = transfer_function(rho)
-    fields_rgba = np.column_stack([R, G, B, alpha])
-
-    pc_vol = vt.ProjectionCloud(
-        pos, fields_rgba, vol=vol,
-        boundbox=[0, box_size, 0, box_size, 0, box_size],
-    )
-
+    Channels:  R = density,  G = star formation rate,  B = temperature.
+    Opacity is driven by density.  Layout: large composite on top,
+    three individual channels in a row below.
+    """
     L = 75.0
     extent = [box_size / 2 - L / 2, box_size / 2 + L / 2]
     bounds = [0, box_size]
     npix = 256
+    ext = [-L / 2, L / 2, -L / 2, L / 2]
 
-    image = pc_vol.grid_projection(
-        extent, npix, bounds, center=None, reduction="volume"
+    def _lognorm(q, plo=1, phi=99):
+        """Log-scale and normalise *q* to [0, 1]."""
+        lq = np.log10(np.clip(q, q[q > 0].min(), None))
+        lo, hi = np.percentile(lq, plo), np.percentile(lq, phi)
+        return np.clip((lq - lo) / (hi - lo), 0, 1)
+
+    # --- Channels ---
+    dens_norm = _lognorm(rho)
+    R = 0.4 * dens_norm
+    G = np.where(sfr > 0, _lognorm(np.where(sfr > 0, sfr, 1.0)), 0.0)
+    hot = np.clip((np.log10(np.maximum(temperature, 1.0)) - np.log10(1.5e6)) / 1.5, 0, 1)
+    B = 3.0 * hot * (1 - dens_norm) ** 2  # suppress in dense regions
+
+    # --- Opacity: max of density-driven and temperature-driven ---
+    alpha = np.maximum(0.08 * dens_norm ** 4,
+                       0.01 * hot ** 2)
+
+    fields_rgba = np.column_stack([R, G, B, alpha])
+    pc_vol = vt.ProjectionCloud(
+        pos, fields_rgba, vol=vol,
+        boundbox=[0, box_size, 0, box_size, 0, box_size],
+    )
+    img_rgb = pc_vol.grid_projection(
+        extent, npix, bounds, center=None, reduction="volume",
     )
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    img = image / image.max()
-    ax.imshow(np.swapaxes(img, 0, 1), origin="lower",
-              extent=[-L / 2, L / 2, -L / 2, L / 2])
-    ax.set_xlabel(f"x [{LENGTH_UNIT}]")
-    ax.set_ylabel(f"y [{LENGTH_UNIT}]")
-    ax.set_title("Volume rendering")
+    # Extract per-channel images
+    z = np.zeros_like(img_rgb[:, :, 0])
+    img_r = np.stack([img_rgb[:, :, 0], z, z], axis=-1)
+    img_g = np.stack([z, img_rgb[:, :, 1], z], axis=-1)
+    img_b = np.stack([z, z, img_rgb[:, :, 2]], axis=-1)
+
+    def _prep(img, per_channel=False, gamma=1.0):
+        """Normalise and transpose for imshow."""
+        out = img.copy()
+        if per_channel and out.ndim == 3:
+            for c in range(out.shape[2]):
+                mx = out[:, :, c].max()
+                if mx > 0:
+                    out[:, :, c] /= mx
+        else:
+            mx = out.max()
+            if mx > 0:
+                out /= mx
+        if gamma != 1.0:
+            out = np.clip(out, 0, None) ** (1.0 / gamma)
+        return np.clip(np.swapaxes(out, 0, 1), 0, 1)
+
+    fig = plt.figure(figsize=(8, 10))
+    gs = fig.add_gridspec(2, 3, height_ratios=[2, 1], hspace=0.25,
+                          wspace=0.15)
+
+    # Main composite image spanning all three columns
+    ax_main = fig.add_subplot(gs[0, :])
+    ax_main.imshow(_prep(img_rgb, per_channel=True, gamma=2.0),
+                   origin="lower", extent=ext)
+    ax_main.set_xlabel(f"x [{LENGTH_UNIT}]")
+    ax_main.set_ylabel(f"y [{LENGTH_UNIT}]")
+    ax_main.set_title("Volume rendering")
+
+    # Individual channel panels — each normalised independently
+    for i, (img_ch, title) in enumerate([
+        (img_r, "Density (R)"),
+        (img_g, "SFR (G)"),
+        (img_b, "Temperature (B)"),
+    ]):
+        ax = fig.add_subplot(gs[1, i])
+        ax.imshow(_prep(img_ch), origin="lower", extent=ext)
+        ax.set_xlabel(f"x [{LENGTH_UNIT}]")
+        if i == 0:
+            ax.set_ylabel(f"y [{LENGTH_UNIT}]")
+        else:
+            ax.set_yticklabels([])
+        ax.set_title(title, fontsize=10)
+
     _save(fig, "volume_rendering.png")
 
 
@@ -365,7 +403,7 @@ def main():
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("Loading galaxy_interaction snapshot...")
-    pos, rho, vol, temperature, box_size = load_galaxy()
+    pos, rho, vol, temperature, sfr, box_size = load_galaxy()
 
     # Build the single-field ProjectionCloud once and reuse it
     print("Building ProjectionCloud (single field)...")
@@ -383,7 +421,7 @@ def main():
 
     # These need different fields, so they build their own ProjectionCloud
     make_multifield(pos, rho, vol, temperature, box_size)
-    make_volume_rendering(pos, rho, vol, box_size)
+    make_volume_rendering(pos, rho, vol, temperature, sfr, box_size)
 
     print("Loading cosmo_box snapshot...")
     pos_cosmo, rho_cosmo, vol_cosmo, box_size_cosmo = load_cosmo()
