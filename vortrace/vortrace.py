@@ -12,7 +12,7 @@ import logging
 from numpy.typing import ArrayLike
 
 from .Cvortrace import (  # type: ignore
-    PointCloud, Projection, Ray, ReductionMode,
+    PointCloud, Projection, ReductionMode,
 )
 
 from vortrace import grid as gr
