@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <cmath>
+#include <cstdio>
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -208,6 +209,75 @@ void PointCloud::buildTree()
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout << "Tree build took " << duration.count() << " milliseconds." << std::endl;
   }
+}
+
+void PointCloud::saveTree(const std::string& filename) const
+{
+  if (!tree_built) {
+    throw std::runtime_error("Cannot save tree: tree has not been built");
+  }
+  FILE* f = fopen(filename.c_str(), "wb");
+  if (!f) {
+    throw std::runtime_error("Cannot open file for writing: " + filename);
+  }
+  tree->saveIndex(f);
+  fclose(f);
+}
+
+void PointCloud::loadTree(const std::string& filename)
+{
+  if (npart == 0) {
+    throw std::runtime_error("Cannot load tree: no points loaded");
+  }
+  FILE* f = fopen(filename.c_str(), "rb");
+  if (!f) {
+    throw std::runtime_error("Cannot open file for reading: " + filename);
+  }
+  tree.reset(new my_kd_tree_t(3, *this, nanoflann::KDTreeSingleIndexAdaptorParams(10)));
+  tree->loadIndex(f);
+  fclose(f);
+  tree_built = true;
+}
+
+std::vector<char> PointCloud::saveTreeToBuffer() const
+{
+  if (!tree_built) {
+    throw std::runtime_error("Cannot save tree: tree has not been built");
+  }
+  FILE* f = tmpfile();
+  if (!f) {
+    throw std::runtime_error("Failed to create temporary file");
+  }
+  tree->saveIndex(f);
+  long size = ftell(f);
+  rewind(f);
+  std::vector<char> buf(size);
+  if (fread(buf.data(), 1, size, f) != static_cast<size_t>(size)) {
+    fclose(f);
+    throw std::runtime_error("Failed to read tree data from temporary file");
+  }
+  fclose(f);
+  return buf;
+}
+
+void PointCloud::loadTreeFromBuffer(const char* data, size_t size)
+{
+  if (npart == 0) {
+    throw std::runtime_error("Cannot load tree: no points loaded");
+  }
+  FILE* f = tmpfile();
+  if (!f) {
+    throw std::runtime_error("Failed to create temporary file");
+  }
+  if (fwrite(data, 1, size, f) != size) {
+    fclose(f);
+    throw std::runtime_error("Failed to write tree data to temporary file");
+  }
+  rewind(f);
+  tree.reset(new my_kd_tree_t(3, *this, nanoflann::KDTreeSingleIndexAdaptorParams(10)));
+  tree->loadIndex(f);
+  fclose(f);
+  tree_built = true;
 }
 
 Float PointCloud::minDistSqToBox(const Point &query_pt) const

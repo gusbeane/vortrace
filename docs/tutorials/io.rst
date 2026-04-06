@@ -61,15 +61,22 @@ Saving and loading point clouds
 .. tab:: Python
 
    You can save and reload an entire ``ProjectionCloud`` (including
-   positions, fields, and bounding box). The kD-tree is rebuilt on load.
+   positions, fields, bounding box, and the kD-tree index). The saved
+   tree is restored on load, avoiding an expensive rebuild.
 
    .. code-block:: python
 
-      # Save
+      # Save (kD-tree is included by default)
       pc.save("cloud.npz")
 
-      # Load
+      # Load (tree is restored, not rebuilt)
       pc_loaded = vt.ProjectionCloud.load("cloud.npz")
+
+   To save without the tree (smaller file, tree rebuilt on load):
+
+   .. code-block:: python
+
+      vt.io.save_cloud("cloud.npz", pc, save_tree=False)
 
 .. tab:: C++
 

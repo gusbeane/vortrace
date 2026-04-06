@@ -12,7 +12,6 @@ authors = [
 
 dependencies = [
   "numpy",
-  "numba",
 ]
 
 classifiers = [

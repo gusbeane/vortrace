@@ -49,7 +49,7 @@ def _generate_images(app):
     expected = [
         "quickstart.png", "grid_projection.png",
         "multifield.png", "volume_rendering.png", "arbitrary_rays.png",
-        "single_ray.png", "periodic.png", "io_loaded.png",
+        "single_ray.png", "periodic.png", "io_loaded.png", "slicing.png",
     ]
     if all((image_dir / name).exists() for name in expected):
         return

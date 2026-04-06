@@ -112,3 +112,50 @@ class TestCloudIO:
         cloud = ProjectionCloud(pos, dens, boundbox=boundbox)
         with pytest.raises(ValueError, match="Unknown format"):
             io.save_cloud(tmp_path / "cloud.fits", cloud, fmt="fits")
+
+    def test_npz_roundtrip_with_tree(self, tmp_path):
+        """Cloud saved with tree loads without rebuilding."""
+        pos, dens, boundbox = self._make_cloud_data()
+        cloud = ProjectionCloud(pos, dens, boundbox=boundbox)
+        path = tmp_path / "cloud_tree.npz"
+        io.save_cloud(path, cloud, save_tree=True)
+        loaded = io.load_cloud(path)
+        assert loaded._cloud.get_tree_built()
+        result = loaded.grid_projection([10., 90.], 8, [0., 100.], None)
+        assert result.shape == (8, 8)
+
+    def test_npz_roundtrip_without_tree(self, tmp_path):
+        """Cloud saved without tree still loads and rebuilds."""
+        pos, dens, boundbox = self._make_cloud_data()
+        cloud = ProjectionCloud(pos, dens, boundbox=boundbox)
+        path = tmp_path / "cloud_notree.npz"
+        io.save_cloud(path, cloud, save_tree=False)
+        loaded = io.load_cloud(path)
+        assert loaded._cloud.get_tree_built()
+        result = loaded.grid_projection([10., 90.], 8, [0., 100.], None)
+        assert result.shape == (8, 8)
+
+    def test_hdf5_roundtrip_with_tree(self, tmp_path):
+        h5py = pytest.importorskip("h5py")  # noqa: F841
+        pos, dens, boundbox = self._make_cloud_data()
+        cloud = ProjectionCloud(pos, dens, boundbox=boundbox)
+        path = tmp_path / "cloud_tree.hdf5"
+        io.save_cloud(path, cloud, fmt="hdf5", save_tree=True)
+        loaded = io.load_cloud(path)
+        assert loaded._cloud.get_tree_built()
+        result = loaded.grid_projection([10., 90.], 8, [0., 100.], None)
+        assert result.shape == (8, 8)
+
+    def test_tree_produces_same_results(self, tmp_path):
+        """Loaded tree gives identical query results to rebuilt tree."""
+        pos, dens, boundbox = self._make_cloud_data()
+        cloud = ProjectionCloud(pos, dens, boundbox=boundbox)
+        result_orig = cloud.grid_projection([10., 90.], 16, [0., 100.], None)
+
+        path = tmp_path / "cloud.npz"
+        io.save_cloud(path, cloud, save_tree=True)
+        loaded = io.load_cloud(path)
+        result_loaded = loaded.grid_projection([10., 90.], 16, [0., 100.],
+                                               None)
+
+        np.testing.assert_array_equal(result_orig, result_loaded)

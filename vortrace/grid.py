@@ -2,13 +2,12 @@
 
 Provides routines for building start/end point grids used by
 :class:`~vortrace.ProjectionCloud.grid_projection`, including
-Tait-Bryan rotation support and numba-accelerated grid construction.
+Tait-Bryan rotation support and numpy-vectorized grid construction.
 """
 
 from __future__ import annotations
 
 import numpy as np
-from numba import njit
 from numpy.typing import ArrayLike
 
 _PROJECTIONS = {
@@ -33,25 +32,15 @@ def _convert_proj_to_tait_bryan_angles_hand(
     return _PROJECTIONS[proj]
 
 
-@njit
 def _generate_base_grid(extent, nres):
+    dx = (extent[0][1] - extent[0][0]) / nres[0]
+    dy = (extent[1][1] - extent[1][0]) / nres[1]
+    x = np.linspace(extent[0][0] + 0.5 * dx, extent[0][1] - 0.5 * dx, nres[0])
+    y = np.linspace(extent[1][0] + 0.5 * dy, extent[1][1] - 0.5 * dy, nres[1])
+    xx, yy = np.meshgrid(x, y, indexing='ij')
     grid = np.zeros((nres[0], nres[1], 3))
-
-    deltax = (extent[0][1] - extent[0][0]) / (nres[0])
-    deltay = (extent[1][1] - extent[1][0]) / (nres[1])
-
-    minx = extent[0][0]
-    miny = extent[1][0]
-
-    # Now create grid.
-    for i in range(nres[0]):
-        for j in range(nres[1]):
-            x = deltax * (i + 0.5) + minx
-            y = deltay * (j + 0.5) + miny
-
-            grid[i][j][0] = x
-            grid[i][j][1] = y
-
+    grid[..., 0] = xx
+    grid[..., 1] = yy
     return grid
 
 
