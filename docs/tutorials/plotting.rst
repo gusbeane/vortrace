@@ -37,7 +37,7 @@ Pass an existing axes to embed in a multi-panel figure:
 
 .. code-block:: python
 
-   dens, cell_ids, s_vals, ds_vals = pc.single_projection(start, end)
+   dens, cell_ids, s_vals, ds_vals = pc.traced_projection(start, end)
 
    fig, ax = vt.plot.plot_ray(
        s_vals, rho[cell_ids],

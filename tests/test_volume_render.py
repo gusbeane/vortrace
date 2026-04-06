@@ -23,7 +23,7 @@ class TestVolumeRenderBasic:
         start = np.array([box / 2, box / 2, 0.1])
         end = np.array([box / 2, box / 2, box - 0.1])
 
-        rgb, _, _, _ = pc.single_projection(start, end, reduction='volume')
+        rgb, _, _, _ = pc.traced_projection(start, end, reduction='volume')
         assert rgb.shape == (3,)
         np.testing.assert_allclose(rgb, [0.0, 0.0, 0.0], atol=1e-15)
 
@@ -39,7 +39,7 @@ class TestVolumeRenderBasic:
         start = np.array([box / 2, box / 2, 0.1])
         end = np.array([box / 2, box / 2, box - 0.1])
 
-        rgb, _, _, ds_vals = pc.single_projection(
+        rgb, _, _, ds_vals = pc.traced_projection(
             start, end, reduction='volume')
         total_L = np.sum(ds_vals)
 
@@ -54,7 +54,7 @@ class TestVolumeRenderBasic:
         start = np.array([box / 2, box / 2, 0.1])
         end = np.array([box / 2, box / 2, box - 0.1])
 
-        rgb, _, _, _ = pc.single_projection(start, end, reduction='volume')
+        rgb, _, _, _ = pc.traced_projection(start, end, reduction='volume')
         np.testing.assert_allclose(rgb, [R, G, B], rtol=1e-6)
 
     def test_reversed_ray_differs(self):
@@ -76,8 +76,8 @@ class TestVolumeRenderBasic:
         start = np.array([box / 2, box / 2, 0.1])
         end = np.array([box / 2, box / 2, box - 0.1])
 
-        rgb_fwd, _, _, _ = pc.single_projection(start, end, reduction='volume')
-        rgb_rev, _, _, _ = pc.single_projection(end, start, reduction='volume')
+        rgb_fwd, _, _, _ = pc.traced_projection(start, end, reduction='volume')
+        rgb_rev, _, _, _ = pc.traced_projection(end, start, reduction='volume')
 
         # Forward and reverse should differ for non-uniform fields
         assert not np.allclose(rgb_fwd, rgb_rev, atol=1e-10)
@@ -128,7 +128,7 @@ class TestVolumeRenderValidation:
         ])
         pc = vt.ProjectionCloud(pos, fields, boundbox=[0, 10, 0, 10, 0, 10])
         with pytest.raises(ValueError, match="alpha >= 0"):
-            pc.single_projection([5, 5, 0.1], [5, 5, 9.9],
+            pc.traced_projection([5, 5, 0.1], [5, 5, 9.9],
                                  reduction='volume')
 
     def test_nfields_1_raises(self):
@@ -149,13 +149,13 @@ class TestVolumeRenderValidation:
                 np.array([[5, 5, 0.1]]), np.array([[5, 5, 9.9]]),
                 reduction='volume')
 
-    def test_nfields_2_single_projection_raises(self):
+    def test_nfields_2_traced_projection_raises(self):
         rng = np.random.default_rng(1)
         pos = rng.random((100, 3)) * 10
         fields = rng.random((100, 2))
         pc = vt.ProjectionCloud(pos, fields, boundbox=[0, 10, 0, 10, 0, 10])
         with pytest.raises(ValueError, match="4 fields"):
-            pc.single_projection([5, 5, 0.1], [5, 5, 9.9],
+            pc.traced_projection([5, 5, 0.1], [5, 5, 9.9],
                                  reduction='volume')
 
 
@@ -215,8 +215,8 @@ class TestVolumeRenderProjection:
         assert dat.shape == (N, 3)
         assert np.all(dat >= 0)
 
-    def test_single_projection_returns_3(self, arepo_snap):
-        """single_projection with volume rendering returns 3-element array."""
+    def test_traced_projection_returns_3(self, arepo_snap):
+        """traced_projection with volume rendering returns 3-element array."""
         pos = arepo_snap["pos"]
         dens = arepo_snap["dens"]
         box_size = arepo_snap["box_size"]
@@ -231,7 +231,7 @@ class TestVolumeRenderProjection:
         start = np.array([box_size / 2, box_size / 2, 0.1])
         end = np.array([box_size / 2, box_size / 2, box_size - 0.1])
 
-        rgb, cell_ids, smid, ds = pc.single_projection(
+        rgb, cell_ids, smid, ds = pc.traced_projection(
             start, end, reduction='volume')
         assert isinstance(rgb, np.ndarray)
         assert rgb.shape == (3,)

@@ -198,7 +198,44 @@ PYBIND11_MODULE(Cvortrace, m) {
                  throw std::runtime_error("Projection has not yet been made");
              return vec_to_numpy(data, self.getNgrid(), self.getNfields());
              },
-             "Return the projection result as a numpy array.");
+             "Return the projection result as a numpy array.")
+        .def("makeDetailedProjection", &Projection::makeDetailedProjection,
+             "Run the projection and collect per-ray segment data.",
+             py::call_guard<py::gil_scoped_release>(),
+             py::arg("cloud"), py::arg("reduction") = ReductionMode::Sum)
+        .def("returnSegments", [](const Projection& self) -> py::tuple {
+             const auto& cell_ids = self.getSegCellIds();
+             const auto& s_enter  = self.getSegSEnter();
+             const auto& s_exit   = self.getSegSExit();
+             const auto& offsets  = self.getSegOffsets();
+             if (offsets.empty())
+                 throw std::runtime_error("No detailed projection data available");
+
+             size_t n = cell_ids.size();
+             size_t noff = offsets.size();
+
+             auto py_cell_ids = py::array_t<int64_t>(n);
+             auto py_s_enter  = py::array_t<double>(n);
+             auto py_s_exit   = py::array_t<double>(n);
+             auto py_offsets  = py::array_t<int64_t>(noff);
+
+             auto* dst_ids = py_cell_ids.mutable_data();
+             for (size_t i = 0; i < n; i++)
+                 dst_ids[i] = static_cast<int64_t>(cell_ids[i]);
+
+             std::memcpy(py_s_enter.mutable_data(), s_enter.data(),
+                         n * sizeof(double));
+             std::memcpy(py_s_exit.mutable_data(), s_exit.data(),
+                         n * sizeof(double));
+
+             auto* dst_off = py_offsets.mutable_data();
+             for (size_t i = 0; i < noff; i++)
+                 dst_off[i] = static_cast<int64_t>(offsets[i]);
+
+             return py::make_tuple(py_cell_ids, py_s_enter, py_s_exit,
+                                   py_offsets);
+             },
+             "Return per-ray segment data as (cell_ids, s_enter, s_exit, offsets) arrays.");
 
     py::class_<BruteProjection>(m, "BruteProjection",
         "Grid-based brute-force projection (samples nearest cell at each voxel).")

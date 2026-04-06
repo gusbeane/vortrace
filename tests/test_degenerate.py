@@ -22,7 +22,7 @@ def make_cubic_lattice(n=5):
 def integrate_ray(pos, fields, vol, boundbox, start, end):
     """Set up point cloud and integrate a single ray. Returns scalar column density."""
     pc = vt.ProjectionCloud(pos, fields, boundbox=boundbox, vol=vol)
-    dens, _cell_ids, _s_vals, _ds_vals = pc.single_projection(
+    dens, _cell_ids, _s_vals, _ds_vals = pc.traced_projection(
         np.array(start), np.array(end))
     return dens
 

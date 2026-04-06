@@ -2,7 +2,7 @@
 
 Provides :class:`ProjectionCloud`, the main user-facing class that wraps
 the C++ backend for grid projections, direct ray projections, and
-single-ray segment queries.
+traced projections with per-segment detail.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import logging
 from numpy.typing import ArrayLike
 
 from .Cvortrace import (  # type: ignore
-    PointCloud, Projection, Ray, ReductionMode, Slice,
+    PointCloud, Projection, ReductionMode, Slice,
 )
 
 from vortrace import grid as gr
@@ -225,108 +225,122 @@ class ProjectionCloud:
         proj_obj.makeProjection(self._cloud, reduction_mode)
         return proj_obj.returnProjection()
 
-    def single_projection(self, pos_start: ArrayLike, pos_end: ArrayLike,
+    def traced_projection(self, pos_start: ArrayLike,
+                           pos_end: ArrayLike,
                            return_midpoint: bool = True, *,
-                           reduction: str = 'integrate') -> tuple:
-        """Perform projection for a single ray and return column density and
-        per-segment info.
+                           reduction: str = 'integrate',
+                           flatten: bool = False) -> tuple:
+        """Projection with per-segment detail for one or more rays.
+
+        Accepts a single ray (shape ``(3,)`` or ``(1, 3)``) or a batch
+        of rays (shape ``(N, 3)``).
 
         Args:
-            pos_start (array): shape (3,) or (1,3) start point.
-            pos_end (array): shape (3,) or (1,3) end point.
-            return_midpoint (bool, optional): if True, return midpoint of
-                each segment.
-            reduction (str): Reduction mode: ``'integrate'``/``'sum'``,
-                ``'max'``, or ``'min'``.
+            pos_start: Ray start point(s).  Shape ``(3,)``, ``(1, 3)``,
+                or ``(N, 3)``.
+            pos_end: Ray end point(s), same shape as *pos_start*.
+            return_midpoint: If *True*, return the midpoint of each
+                segment; otherwise return the entry distance.
+            reduction: ``'integrate'``/``'sum'``, ``'max'``,
+                ``'min'``, or ``'volume'``.
+            flatten: If *True*, return flat arrays with an offset index instead of
+                per-ray lists.  Only applies to batch (N > 1) inputs.
 
         Returns:
-            tuple: ``(value, cell_ids, s_vals, ds_vals)``.
-            When ``nfields == 1``, *value* is a scalar (backward compatible).
-            When ``nfields > 1``, *value* is a 1-D array of length *nfields*.
+            For a **single ray** (input shape ``(3,)`` or ``(1, 3)``):
+
+            ``(value, cell_ids, s_vals, ds_vals)``
+
+            - *value*: scalar when ``nfields == 1``, else 1-D array.
+            - *cell_ids*, *s_vals*, *ds_vals*: 1-D arrays.
+
+            For a **batch** with ``flatten=False`` (default):
+
+            ``(values, cell_ids_list, s_vals_list, ds_vals_list)``
+
+            - *values*: shape ``(N,)`` or ``(N, nfields)``.
+            - *cell_ids_list*, *s_vals_list*, *ds_vals_list*: lists of
+              *N* arrays, one per ray.
+
+            For a **batch** with ``flatten=True``:
+
+            ``(values, cell_ids, s_vals, ds_vals, offsets)``
+
+            - Flat concatenated arrays for all segments plus an
+              *offsets* array of length ``N + 1``.
+              Ray *i*'s data is at ``offsets[i]:offsets[i+1]``.
         """
-        # Allow lists/tuples as input, convert to numpy arrays for shape checks
         pos_start_np = np.asarray(pos_start)
         pos_end_np = np.asarray(pos_end)
 
-        # Allow either 1D (3,) or 2D (1,3) inputs, and reshape 1D to 2D (1,3)
+        # Detect single-ray mode.
+        single = False
         if pos_start_np.ndim == 1 and pos_end_np.ndim == 1:
             if pos_start_np.shape != (3,) or pos_end_np.shape != (3,):
                 raise ValueError('If 1D, pos_start and pos_end must both '
                                  'have shape (3,)')
-            # Reshape to (1,3) for consistent processing
             pos_start_np = pos_start_np[np.newaxis, :]
             pos_end_np = pos_end_np[np.newaxis, :]
+            single = True
         elif pos_start_np.ndim == 2 and pos_end_np.ndim == 2:
-            if pos_start_np.shape != (1, 3) or pos_end_np.shape != (1, 3):
-                raise ValueError('If 2D, pos_start and pos_end must both '
-                                 'have shape (1,3)')
+            if (pos_start_np.shape != pos_end_np.shape or
+                    pos_start_np.shape[1] != 3):
+                raise ValueError('pos_start and pos_end must be 2D arrays '
+                                 'of identical shape (N, 3)')
+            if pos_start_np.shape[0] == 1:
+                single = True
         else:
-            # Handles cases like one is 1D and other is 2D, or incorrect
-            # ndims/shapes
             raise ValueError('pos_start and pos_end must both be 1D shape '
-                             '(3,) or both 2D shape (1,3)')
+                             '(3,) or both 2D shape (N, 3)')
 
-        # Now that shape is (1,3), prepare for backend
         pos_start_c = self._prepare_array_for_backend(pos_start_np)
         pos_end_c = self._prepare_array_for_backend(pos_end_np)
 
-        # extract single vectors for Ray constructor (expects 1D (3,) like
-        # arrays)
-        start_vec = pos_start_c[0]
-        end_vec = pos_end_c[0]
-
         reduction_mode = self._validate_reduction(reduction)
 
-        # compute using Ray — walk then reduce
-        ray = Ray(start_vec, end_vec)
-        ray.integrate(self._cloud, reduction_mode)
+        proj_obj = Projection(pos_start_c, pos_end_c)
+        proj_obj.makeDetailedProjection(self._cloud, reduction_mode)
 
-        if reduction_mode == ReductionMode.Max:
-            col_vals = np.array(ray.get_max_val())
-        elif reduction_mode == ReductionMode.Min:
-            col_vals = np.array(ray.get_min_val())
-        elif reduction_mode == ReductionMode.VolumeRender:
-            col_vals = np.array(ray.get_vol_render_val())
-        else:
-            col_vals = np.array(ray.get_col())  # length nfields
+        values = proj_obj.returnProjection()
+        cell_ids, s_enter, s_exit, offsets = proj_obj.returnSegments()
 
-        # Segments are already merged (one per cell, in order)
-        segments = ray.get_segments()
-        cell_ids = np.array([seg[0] for seg in segments], dtype=int)
-        s_enter = np.array([seg[1] for seg in segments], dtype=np.float64)
-        s_exit = np.array([seg[2] for seg in segments], dtype=np.float64)
-        ds_vals = np.array([seg[3] for seg in segments], dtype=np.float64)
-        smid_vals = (s_enter + s_exit) / 2.0
+        # Map internal cell IDs to original particle IDs.
+        cell_ids = self.orig_ids[cell_ids]
 
-        # Validation: check that column values are consistent with segments
-        # (only meaningful for Sum/integrate mode)
-        orig_cell_ids = self.orig_ids[cell_ids]
-        if reduction_mode == ReductionMode.Sum:
-            for f_idx in range(self._nfields):
-                if self._nfields == 1:
-                    field_vals = self.fields_orig[orig_cell_ids]
-                else:
-                    field_vals = self.fields_orig[orig_cell_ids, f_idx]
-                computed = np.sum(field_vals * ds_vals)
-                if not np.isclose(col_vals[f_idx], computed):
-                    raise ValueError(
-                        f"Field {f_idx}: extracted ray cells and ds does "
-                        f"not give consistent density: "
-                        f"{col_vals[f_idx]} != {computed}")
-
-        # VolumeRender always returns a 3-element RGB array.
-        # Scalar dens for backward compat when nfields == 1.
-        if reduction_mode == ReductionMode.VolumeRender:
-            dens_out = col_vals
-        elif self._nfields == 1:
-            dens_out = col_vals[0]
-        else:
-            dens_out = col_vals
-
+        ds_vals = s_exit - s_enter
         if return_midpoint:
-            return dens_out, self.orig_ids[cell_ids], smid_vals, ds_vals
+            s_vals = (s_enter + s_exit) / 2.0
         else:
-            return dens_out, self.orig_ids[cell_ids], s_enter, ds_vals
+            s_vals = s_enter
+
+        if single:
+            # Unpack single-ray result to match legacy format.
+            if (reduction_mode == ReductionMode.VolumeRender or
+                    self._nfields > 1):
+                val_out = values[0]
+            else:
+                val_out = values[0] if values.ndim == 1 else values[0, 0]
+            return val_out, cell_ids, s_vals, ds_vals
+
+        if flatten:
+            return values, cell_ids, s_vals, ds_vals, offsets
+
+        # Split flat arrays into per-ray lists.
+        cell_ids_list = [cell_ids[offsets[i]:offsets[i + 1]]
+                         for i in range(len(offsets) - 1)]
+        s_vals_list = [s_vals[offsets[i]:offsets[i + 1]]
+                       for i in range(len(offsets) - 1)]
+        ds_vals_list = [ds_vals[offsets[i]:offsets[i + 1]]
+                        for i in range(len(offsets) - 1)]
+
+        return values, cell_ids_list, s_vals_list, ds_vals_list
+
+    def single_projection(self, *args, **kwargs):
+        """Removed.  Use :meth:`traced_projection` instead."""
+        raise AttributeError(
+            "'single_projection' has been removed. "
+            "Use 'traced_projection' instead."
+        )
 
     def slice(self, extent: ArrayLike,
               nres: int | tuple[int, int],
