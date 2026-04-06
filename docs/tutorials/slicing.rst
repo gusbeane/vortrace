@@ -19,6 +19,11 @@ line of sight), a slice returns the field value of the cell at each pixel.
 
    The low-level ``Cvortrace.Slice`` class is also available for direct use.
 
+.. image:: /images/slicing.png
+   :width: 80%
+   :align: center
+   :alt: Density slice at the box midplane
+
 .. tab:: C++
 
    .. code-block:: cpp

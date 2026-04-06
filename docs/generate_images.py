@@ -360,6 +360,25 @@ def make_periodic(pos_cosmo, rho_cosmo, vol_cosmo, box_size_cosmo):
     _save(fig, "periodic.png")
 
 
+def make_slicing(pc, box_size):
+    """slicing.png — 2D density slice at the box midplane."""
+    L = 75.0
+    extent = [box_size / 2 - L / 2, box_size / 2 + L / 2,
+              box_size / 2 - L / 2, box_size / 2 + L / 2]
+    npix = 256
+
+    image = pc.slice(extent, npix, depth=box_size / 2)
+
+    fig, ax, _ = vt.plot.plot_grid(
+        image,
+        extent=[-L / 2, L / 2, -L / 2, L / 2],
+        label=f"Density [{DENSITY_UNIT}]",
+    )
+    ax.set_xlabel(f"x [{LENGTH_UNIT}]")
+    ax.set_ylabel(f"y [{LENGTH_UNIT}]")
+    _save(fig, "slicing.png")
+
+
 def make_io(pc, box_size):
     """io_loaded.png — demonstrate save/load round-trip."""
     import tempfile
@@ -417,6 +436,7 @@ def main():
     make_grid_projection(pc, box_size)
     make_single_ray(pc, rho, box_size)
     make_arbitrary_rays(pc, box_size)
+    make_slicing(pc, box_size)
     make_io(pc, box_size)
 
     # These need different fields, so they build their own ProjectionCloud
