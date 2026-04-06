@@ -2,7 +2,7 @@ Contributing
 ============
 
 Setting up a development environment
--------------------------------------
+------------------------------------
 
 .. code-block:: bash
 

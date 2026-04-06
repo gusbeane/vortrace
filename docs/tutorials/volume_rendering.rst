@@ -2,7 +2,7 @@ Volume Rendering
 ================
 
 Volume rendering produces an RGB image by compositing color and opacity
-along each ray using emission-absorption integration.  Unlike a density
+along each ray using emission-absorption integration. Unlike a density
 projection (which sums a quantity), volume rendering maps cell quantities
 through a **transfer function** to ``(R, G, B, alpha)`` and applies
 front-to-back compositing:
@@ -13,21 +13,21 @@ front-to-back compositing:
    \qquad \tau(s) = \int_0^s \alpha(s') \, ds'
 
 where :math:`\alpha` is the absorption coefficient per unit length and
-:math:`\tau` is the optical depth.  The final color :math:`c(s)` is an
+:math:`\tau` is the optical depth. The final color :math:`c(s)` is an
 integral over the full ray length from `0` to `s`.
 
 .. note::
 
    Unlike simple integrals (Sum, Max, Min), the order of the ray
-   **start and end positions matters** for volume rendering.  The ray is
+   **start and end positions matters** for volume rendering. The ray is
    composited front-to-back, so swapping start and end will produce a
    different image.
 
 Defining a transfer function
------------------------------
+----------------------------
 
 The transfer function maps cell quantities to four values: red, green, blue,
-and absorption.  You define this yourself.  In the example below we use three
+and absorption. You define this yourself. In the example below we use three
 physical channels -- density (red), star-formation rate (green), and
 temperature (blue) -- with density-driven opacity:
 
@@ -152,7 +152,7 @@ The result is an RGB image. Red is tracing the total density. Green shows the re
 .. note::
 
    Volume rendering requires exactly **4 input fields** interpreted as
-   ``(R, G, B, alpha)``.  The output has 3 values per ray (RGB).
+   ``(R, G, B, alpha)``. The output has 3 values per ray (RGB).
 
 .. seealso::
 

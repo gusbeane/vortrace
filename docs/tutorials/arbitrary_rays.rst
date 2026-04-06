@@ -2,7 +2,7 @@ Arbitrary Ray Projections
 =========================
 
 Instead of a regular grid, you can pass your own arrays of ray start and
-end points.  This is useful for irregular geometries like HEALPix sky maps
+end points. This is useful for irregular geometries like HEALPix sky maps
 or any custom ray configuration.
 
 Batch projection
@@ -66,7 +66,7 @@ HEALPix sky map example
 
 .. tab:: C++
 
-   The C++ library handles any set of rays.  Generate HEALPix directions
+   The C++ library handles any set of rays. Generate HEALPix directions
    using a HEALPix C++ library (e.g. ``healpix_cxx``) and pass the
    start/end arrays to ``Projection``.
 

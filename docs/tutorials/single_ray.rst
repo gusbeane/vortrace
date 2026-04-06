@@ -3,11 +3,11 @@ Single Ray Analysis
 
 Sometimes you need to inspect the full trace along a single ray -- which
 cells it crosses, the path length through each cell, and the field value in
-each cell.  This is useful for debugging, visualization, and understanding
+each cell. This is useful for debugging, visualization, and understanding
 the structure of the mesh along a line of sight.
 
 Tracing a single ray
----------------------
+--------------------
 
 .. tab:: Python
 

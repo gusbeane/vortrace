@@ -35,7 +35,7 @@ Installation
 .. tab:: C++ (standalone)
 
    ``vortrace`` can be used as a standalone C++17 library without Python.
-   The only dependency is a C++17-capable compiler and CMake >= 3.15.  The
+   The only dependency is a C++17-capable compiler and CMake >= 3.15. The
    bundled `nanoflann <https://github.com/jlblancoc/nanoflann>`_ header-only
    library is included -- no external dependencies are required.
 
@@ -96,7 +96,7 @@ CMake options
      - ``OFF``
      - Build C++ unit tests (requires Catch2 >= 3.1)
 
-OpenMP is auto-detected.  If found, ``vortrace_core`` is linked against
+OpenMP is auto-detected. If found, ``vortrace_core`` is linked against
 ``OpenMP::OpenMP_CXX`` automatically.
 
 Running C++ tests

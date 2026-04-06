@@ -2,12 +2,12 @@ Slicing
 =======
 
 A slice extracts a 2D plane of interpolated field values at a constant depth
-through the Voronoi mesh.  Unlike a projection (which integrates along the
+through the Voronoi mesh. Unlike a projection (which integrates along the
 line of sight), a slice returns the field value of the cell at each pixel.
 
 .. tab:: Python
 
-   The ``Slice`` class is available through the low-level C++ bindings.  It
+   The ``Slice`` class is available through the low-level C++ bindings. It
    is not yet wrapped in ``ProjectionCloud``.
 
    .. code-block:: python

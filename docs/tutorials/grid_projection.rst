@@ -120,7 +120,7 @@ Projection planes
 
 In Python, the ``proj`` parameter provides a shorthand for the six Cartesian
 projection planes: ``'xy'`` (default), ``'xz'``, ``'yz'``, ``'yx'``, ``'zx'``,
-``'zy'``.  The ``center`` parameter is required for all planes except the
+``'zy'``. The ``center`` parameter is required for all planes except the
 default ``'xy'``.
 
 In C++, you construct the ray grid manually and can orient it in any direction.
