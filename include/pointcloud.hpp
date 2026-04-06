@@ -3,6 +3,8 @@
 
 #include "mytypes.hpp"
 #include <memory>
+#include <vector>
+#include <string>
 #include <nanoflann.hpp>
 
 //Forward declare for subsequent typedef
@@ -40,6 +42,10 @@ class PointCloud
                     const double* vol = nullptr, size_t nvol = 0,
                     bool periodic = false);
     void buildTree();
+    void saveTree(const std::string& filename) const;
+    void loadTree(const std::string& filename);
+    std::vector<char> saveTreeToBuffer() const;
+    void loadTreeFromBuffer(const char* data, size_t size);
 
     size_t queryTree(const Point &query_pt) const;
     void queryTreeK(const Point &query_pt, size_t k, size_t *results, Float *r2) const;

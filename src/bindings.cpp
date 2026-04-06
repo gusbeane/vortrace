@@ -116,6 +116,21 @@ PYBIND11_MODULE(Cvortrace, m) {
              py::arg("periodic") = false)
         .def("buildTree", &PointCloud::buildTree,
              "Build the kD-tree index for nearest-neighbor queries.")
+        .def("saveTree", &PointCloud::saveTree,
+             "Save the kD-tree index to a binary file.",
+             py::arg("filename"))
+        .def("loadTree", &PointCloud::loadTree,
+             "Load a kD-tree index from a binary file (points must already be loaded).",
+             py::arg("filename"))
+        .def("saveTreeToBytes", [](const PointCloud &self) -> py::bytes {
+             auto buf = self.saveTreeToBuffer();
+             return py::bytes(buf.data(), buf.size());
+        }, "Serialize the kD-tree index to a bytes object.")
+        .def("loadTreeFromBytes", [](PointCloud &self, py::bytes data) {
+             std::string s = data;
+             self.loadTreeFromBuffer(s.data(), s.size());
+        }, "Load a kD-tree index from a bytes object (points must already be loaded).",
+           py::arg("data"))
         .def("get_nfields", &PointCloud::get_nfields,
              "Return the number of scalar fields per particle.")
         .def("get_pt", &PointCloud::get_pt,

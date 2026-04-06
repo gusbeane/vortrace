@@ -135,11 +135,13 @@ def load_grid(filename: str) -> tuple[np.ndarray, dict]:
 # ---------------------------------------------------------------------------
 
 def save_cloud(filename: str, cloud: ProjectionCloud, *,
-               fmt: str = "npz") -> None:
+               fmt: str = "npz",
+               save_tree: bool = True) -> None:
     """Save a :class:`~vortrace.vortrace.ProjectionCloud` to disk.
 
-    Only the data needed to reconstruct the cloud (positions, fields,
-    and bounding box) are stored.  The KD-tree is rebuilt on load.
+    Positions, fields, bounding box, and (optionally) the kD-tree index
+    are stored.  When the tree is included, :func:`load_cloud` restores
+    it without rebuilding.
 
     Parameters
     ----------
@@ -149,6 +151,9 @@ def save_cloud(filename: str, cloud: ProjectionCloud, *,
         The cloud to save.
     fmt : {'npz', 'hdf5'}
         File format.
+    save_tree : bool, optional
+        If *True* (default) and the kD-tree has been built, serialize
+        the tree index into the file so it can be restored on load.
     """
     pos = np.asarray(cloud.pos_orig)
     fields = np.asarray(cloud.fields_orig)
@@ -156,11 +161,17 @@ def save_cloud(filename: str, cloud: ProjectionCloud, *,
 
     periodic = getattr(cloud, 'periodic', False)
 
+    tree_bytes = None
+    if save_tree and cloud._cloud.get_tree_built():
+        tree_bytes = cloud._cloud.saveTreeToBytes()
+
     if fmt == "npz":
         arrays = {"pos": pos, "fields": fields, "boundbox": boundbox,
                   "periodic": np.bool_(periodic)}
         if cloud.vol_orig is not None:
             arrays["vol"] = np.asarray(cloud.vol_orig)
+        if tree_bytes is not None:
+            arrays["_kdtree"] = np.void(tree_bytes)
         np.savez(filename, **arrays)
 
     elif fmt == "hdf5":
@@ -172,6 +183,8 @@ def save_cloud(filename: str, cloud: ProjectionCloud, *,
             f.attrs["periodic"] = periodic
             if cloud.vol_orig is not None:
                 f.create_dataset("vol", data=np.asarray(cloud.vol_orig))
+            if tree_bytes is not None:
+                f.create_dataset("_kdtree", data=np.void(tree_bytes))
     else:
         raise ValueError(f"Unknown format: {fmt!r}. Use 'npz' or 'hdf5'.")
 
@@ -179,7 +192,8 @@ def save_cloud(filename: str, cloud: ProjectionCloud, *,
 def load_cloud(filename: str) -> ProjectionCloud:
     """Load a ProjectionCloud saved by :func:`save_cloud`.
 
-    The KD-tree is rebuilt automatically during construction.
+    If a kD-tree index was saved, it is restored directly; otherwise
+    the tree is rebuilt from scratch.
 
     Parameters
     ----------
@@ -189,19 +203,22 @@ def load_cloud(filename: str) -> ProjectionCloud:
     Returns
     -------
     ProjectionCloud
-        A fully usable cloud with a rebuilt KD-tree.
+        A fully usable cloud with a ready kD-tree.
     """
     from vortrace.vortrace import ProjectionCloud
 
     fmt = _detect_format(filename)
+    tree_bytes = None
 
     if fmt == "npz":
-        with np.load(filename, allow_pickle=False) as npz:
+        with np.load(filename, allow_pickle=True) as npz:
             pos = npz["pos"]
             fields = npz["fields"]
             boundbox = npz["boundbox"]
             vol = npz["vol"] if "vol" in npz else None
             periodic = bool(npz["periodic"]) if "periodic" in npz else False
+            if "_kdtree" in npz:
+                tree_bytes = bytes(npz["_kdtree"])
     else:
         h5py = _import_h5py()
         with h5py.File(filename, "r") as f:
@@ -210,6 +227,15 @@ def load_cloud(filename: str) -> ProjectionCloud:
             boundbox = f.attrs["boundbox"]
             vol = f["vol"][:] if "vol" in f else None
             periodic = bool(f.attrs.get("periodic", False))
+            if "_kdtree" in f:
+                tree_bytes = bytes(f["_kdtree"][()])
+
+    if tree_bytes is not None:
+        cloud = ProjectionCloud(pos, fields, boundbox=list(boundbox),
+                                vol=vol, periodic=periodic,
+                                _skip_build_tree=True)
+        cloud._cloud.loadTreeFromBytes(tree_bytes)
+        return cloud
 
     return ProjectionCloud(pos, fields, boundbox=list(boundbox),
                            vol=vol, periodic=periodic)
