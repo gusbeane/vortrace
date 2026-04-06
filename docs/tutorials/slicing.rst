@@ -11,18 +11,20 @@ line of sight), a slice returns the field value of the cell at each pixel.
 
       import vortrace as vt
 
-      pc = vt.ProjectionCloud(pos, rho, boundbox=boundbox, vol=vol)
+      BoxSize = 100.0
+      pc = vt.ProjectionCloud(
+          pos, rho, vol=vol,
+          boundbox=[0, BoxSize, 0, BoxSize, 0, BoxSize],
+      )
 
-      # Slice: 256x256 pixels over [xmin, xmax, ymin, ymax] at z = depth
-      data = pc.slice([0.1, 99.9, 0.1, 99.9], 256, depth=50.0)
+      # Slice: 256x256 pixels at the box midplane
+      L = 75.0
+      extent = [BoxSize / 2 - L / 2, BoxSize / 2 + L / 2,
+                BoxSize / 2 - L / 2, BoxSize / 2 + L / 2]
+      data = pc.slice(extent, 256, depth=BoxSize / 2)
       # data.shape is (256, 256) for a single field
 
    The low-level ``Cvortrace.Slice`` class is also available for direct use.
-
-.. image:: /images/slicing.png
-   :width: 80%
-   :align: center
-   :alt: Density slice at the box midplane
 
 .. tab:: C++
 
@@ -35,14 +37,22 @@ line of sight), a slice returns the field value of the cell at each pixel.
       cloud.buildTree();
 
       std::array<size_t, 2> npix = {256, 256};
-      std::array<Float, 4> extent = {0.1, 99.9, 0.1, 99.9};
-      Float depth = 50.0;
+      Float L = 75.0, BoxSize = 100.0;
+      std::array<Float, 4> extent = {
+          BoxSize / 2 - L / 2, BoxSize / 2 + L / 2,
+          BoxSize / 2 - L / 2, BoxSize / 2 + L / 2};
+      Float depth = BoxSize / 2;
 
       Slice slice(npix, extent, depth);
       slice.makeSlice(cloud);
 
       const auto& data = slice.getSliceData();
       // data[iy * npix_x * nfields + ix * nfields + f]
+
+.. image:: /images/slicing.png
+   :width: 80%
+   :align: center
+   :alt: Density slice at the box midplane
 
 Saving a slice to file
 ----------------------
