@@ -12,7 +12,7 @@ import logging
 from numpy.typing import ArrayLike
 
 from .Cvortrace import (  # type: ignore
-    PointCloud, Projection, Ray, ReductionMode,
+    PointCloud, Projection, Ray, ReductionMode, Slice,
 )
 
 from vortrace import grid as gr
@@ -40,7 +40,8 @@ class ProjectionCloud:
     def __init__(self, pos: ArrayLike, fields: ArrayLike,
                  boundbox: list[float] | None = None,
                  vol: ArrayLike | None = None, *,
-                 periodic: bool = False) -> None:
+                 periodic: bool = False,
+                 _skip_build_tree: bool = False) -> None:
         """Create a ProjectionCloud from particle data.
 
         Parameters
@@ -92,7 +93,8 @@ class ProjectionCloud:
         else:
             self._cloud.loadPoints(self.pos_orig, self.fields_orig,
                                    boundbox, periodic=periodic)
-        self._cloud.buildTree()
+        if not _skip_build_tree:
+            self._cloud.buildTree()
 
         # Get filtered index mapping from C++
         self.orig_ids = np.array(self._cloud.get_orig_ids())
@@ -326,17 +328,56 @@ class ProjectionCloud:
         else:
             return dens_out, self.orig_ids[cell_ids], s_enter, ds_vals
 
+    def slice(self, extent: ArrayLike,
+              nres: int | tuple[int, int],
+              depth: float) -> np.ndarray:
+        """Extract a 2D slice at constant depth through the point cloud.
+
+        Unlike a projection (which integrates along the line of sight), a
+        slice returns the nearest-cell field value at each pixel position.
+
+        Args:
+            extent: Spatial extent ``[xmin, xmax, ymin, ymax]``.
+            nres: Number of pixels (int for square, or ``(nx, ny)``).
+            depth: The z-coordinate of the slicing plane.
+
+        Returns:
+            ndarray: Shape ``(nx, ny)`` for single field,
+                ``(nx, ny, nfields)`` for multi-field.
+        """
+        if isinstance(nres, int):
+            npix = (nres, nres)
+        else:
+            npix = tuple(nres)
+
+        extent_arr = np.asarray(extent, dtype=np.float64).ravel()
+        if extent_arr.size != 4:
+            raise ValueError(
+                "extent must have 4 elements [xmin, xmax, ymin, ymax]")
+
+        sl = Slice(list(npix), list(extent_arr), float(depth))
+        sl.makeSlice(self._cloud)
+        dat = sl.returnSlice()
+
+        if self._nfields == 1:
+            dat = dat.reshape(npix[0], npix[1])
+        else:
+            dat = dat.reshape(npix[0], npix[1], self._nfields)
+
+        return dat
+
     # ------------------------------------------------------------------
     # Convenience I/O wrappers
     # ------------------------------------------------------------------
 
-    def save(self, filename: str, *, fmt: str = "npz") -> None:
+    def save(self, filename: str, *, fmt: str = "npz",
+             save_tree: bool = True) -> None:
         """Save this cloud to disk.
 
         See :func:`vortrace.io.save_cloud` for details.
         """
         from vortrace.io import save_cloud
-        save_cloud(filename, self, fmt=fmt)
+        save_cloud(filename, self, fmt=fmt, save_tree=save_tree)
 
     @classmethod
     def load(cls, filename: str) -> ProjectionCloud:

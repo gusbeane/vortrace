@@ -7,28 +7,17 @@ line of sight), a slice returns the field value of the cell at each pixel.
 
 .. tab:: Python
 
-   The ``Slice`` class is available through the low-level C++ bindings. It
-   is not yet wrapped in ``ProjectionCloud``.
-
    .. code-block:: python
 
-      from vortrace.Cvortrace import PointCloud, Slice
-      import numpy as np
+      import vortrace as vt
 
-      # Build the point cloud
-      cloud = PointCloud()
-      cloud.loadPoints(pos, rho)
-      cloud.buildTree()
+      pc = vt.ProjectionCloud(pos, rho, boundbox=boundbox, vol=vol)
 
-      # Define the slice: 256x256 pixels over [xmin, xmax, ymin, ymax] at z = depth
-      npix = (256, 256)
-      extent = (0.1, 99.9, 0.1, 99.9)
-      depth = 50.0
+      # Slice: 256x256 pixels over [xmin, xmax, ymin, ymax] at z = depth
+      data = pc.slice([0.1, 99.9, 0.1, 99.9], 256, depth=50.0)
+      # data.shape is (256, 256) for a single field
 
-      sl = Slice(npix, extent, depth)
-      sl.makeSlice(cloud)
-
-      data = sl.getSliceData()  # flat array of size 256*256*nfields
+   The low-level ``Cvortrace.Slice`` class is also available for direct use.
 
 .. tab:: C++
 
