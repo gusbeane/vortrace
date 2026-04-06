@@ -19,7 +19,7 @@ class Projection
     std::vector<size_t> seg_cell_ids;  // flat concatenated cell IDs
     std::vector<Float>  seg_s_enter;   // flat concatenated entry distances
     std::vector<Float>  seg_s_exit;    // flat concatenated exit distances
-    std::vector<size_t> seg_offsets;   // CSR offsets, length ngrid+1
+    std::vector<size_t> seg_offsets;   // offsets, length ngrid+1
 
   public:
     Projection(const Float* pos_start, const Float* pos_end, size_t ngrid);

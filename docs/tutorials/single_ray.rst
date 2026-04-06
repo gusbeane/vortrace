@@ -116,7 +116,7 @@ for many rays at once. The rays are traced in parallel using OpenMP.
           ray_smid  = s_vals_list[i]
 
    For performance-critical code, use ``flatten=True`` to get flat
-   CSR-style arrays:
+   flat arrays with an offset index:
 
    .. code-block:: python
 

@@ -117,7 +117,7 @@ void Projection::makeDetailedProjection(const PointCloud &cloud, ReductionMode m
   }
   if (eptr) std::rethrow_exception(eptr);
 
-  // Build flat CSR arrays from per-ray segments.
+  // Build flat offset-indexed arrays from per-ray segments.
   seg_offsets.resize(ngrid + 1);
   seg_offsets[0] = 0;
   for (size_t i = 0; i < ngrid; i++) {

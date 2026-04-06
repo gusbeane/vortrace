@@ -241,7 +241,7 @@ class ProjectionCloud:
                 segment; otherwise return the entry distance.
             reduction: ``'integrate'``/``'sum'``, ``'max'``,
                 ``'min'``, or ``'volume'``.
-            flatten: If *True*, return flat CSR-style arrays instead of
+            flatten: If *True*, return flat arrays with an offset index instead of
                 per-ray lists.  Only applies to batch (N > 1) inputs.
 
         Returns:
@@ -265,7 +265,7 @@ class ProjectionCloud:
             ``(values, cell_ids, s_vals, ds_vals, offsets)``
 
             - Flat concatenated arrays for all segments plus an
-              *offsets* array of length ``N + 1`` (CSR layout).
+              *offsets* array of length ``N + 1``.
               Ray *i*'s data is at ``offsets[i]:offsets[i+1]``.
         """
         pos_start_np = np.asarray(pos_start)
