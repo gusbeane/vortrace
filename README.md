@@ -29,10 +29,10 @@ pip install ./
 Installing ``vortrace`` can be done using ``pip``:
 
 ```
-git clone https://github.com/gusbeane/vortrace.git
-cd vortrace
-pip install ./
+pip install vortrace
 ```
+
+Or see the docs for more [installation options](https://vortrace.readthedocs.io/en/latest/installation.html).
 
 ## Getting Started
 
@@ -94,6 +94,6 @@ A one-dimensional integral through an unstructured mesh at first glance seems ve
 
 ## License
 
-`vortrace` is released under the MIT License. 
+`vortrace` is released under the MIT License. It is authored by Angus Beane and Matthew C. Smith.
 
 This project incorporates [`nanoflann`](https://github.com/jlblancoc/nanoflann) `v1.3.2`, a header-only library distributed under the BSD License.
