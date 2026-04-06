@@ -1,7 +1,7 @@
 C++ API
 =======
 
-All public headers live in ``include/``.  Include
+All public headers live in ``include/``. Include
 ``<vortrace/vortrace.hpp>`` for the full API, or include individual
 headers as needed.
 
@@ -36,15 +36,15 @@ Defined in ``mytypes.hpp``.
 
    .. cpp:enumerator:: VolumeRender = 3
 
-      Front-to-back emission-absorption compositing.  Requires 4 input
-      fields (R, G, B, alpha).  Returns 3 output values (RGB).
+      Front-to-back emission-absorption compositing. Requires 4 input
+      fields (R, G, B, alpha). Returns 3 output values (RGB).
 
 Verbose and warnings
 ^^^^^^^^^^^^^^^^^^^^
 
 .. cpp:member:: std::atomic<bool> vortrace::verbose
 
-   Runtime flag to enable verbose output.  Default: ``false``.
+   Runtime flag to enable verbose output. Default: ``false``.
 
 .. cpp:type:: vortrace::WarningCallback = std::function<void(const std::string&)>
 
@@ -52,7 +52,7 @@ Verbose and warnings
 
 .. cpp:member:: vortrace::WarningCallback vortrace::warning_handler
 
-   The active warning callback.  Default: prints to ``stderr``.
+   The active warning callback. Default: prints to ``stderr``.
 
 .. cpp:function:: void vortrace::warn(const std::string& msg)
 
@@ -62,7 +62,7 @@ Verbose and warnings
 PointCloud
 ----------
 
-Defined in ``pointcloud.hpp``.  Manages particle data and a nanoflann
+Defined in ``pointcloud.hpp``. Manages particle data and a nanoflann
 kD-tree for nearest-neighbor queries.
 
 .. cpp:class:: PointCloud
@@ -88,7 +88,7 @@ kD-tree for nearest-neighbor queries.
 
    .. cpp:function:: void buildTree()
 
-      Build the kD-tree.  Must be called after ``loadPoints``.
+      Build the kD-tree. Must be called after ``loadPoints``.
 
    .. cpp:function:: size_t queryTree(const Point& query_pt) const
 
@@ -139,7 +139,7 @@ kD-tree for nearest-neighbor queries.
 Ray
 ---
 
-Defined in ``ray.hpp``.  Traces a single ray through the Voronoi mesh.
+Defined in ``ray.hpp``. Traces a single ray through the Voronoi mesh.
 
 .. cpp:class:: Ray
 
@@ -174,7 +174,7 @@ Defined in ``ray.hpp``.  Traces a single ray through the Voronoi mesh.
    .. cpp:function:: void integrate(const PointCloud& cloud, \
                                     ReductionMode mode = ReductionMode::Sum)
 
-      Walk the ray and apply a reduction.  Results are stored internally
+      Walk the ray and apply a reduction. Results are stored internally
       and accessed via the getter methods below.
 
    .. cpp:function:: Float findSplitPointDistance(const Point& pos1, const Point& pos2)
@@ -205,7 +205,7 @@ Defined in ``ray.hpp``.  Traces a single ray through the Voronoi mesh.
 Projection
 ----------
 
-Defined in ``projection.hpp``.  Integrates fields along a batch of rays.
+Defined in ``projection.hpp``. Integrates fields along a batch of rays.
 
 .. cpp:class:: Projection
 
@@ -239,14 +239,14 @@ Defined in ``projection.hpp``.  Integrates fields along a batch of rays.
 BruteProjection
 ---------------
 
-Defined in ``brute_projection.hpp``.  Grid-based projection over a regular
+Defined in ``brute_projection.hpp``. Grid-based projection over a regular
 3D extent.
 
 .. cpp:class:: BruteProjection
 
    .. cpp:function:: BruteProjection(std::array<size_t,3> npix, std::array<Float,6> extent)
 
-      :param npix: ``{nx, ny, nz}`` -- grid resolution.  Rays are cast along
+      :param npix: ``{nx, ny, nz}`` -- grid resolution. Rays are cast along
          the z-axis; the output has ``nx * ny`` pixels.
       :param extent: ``{xmin, xmax, ymin, ymax, zmin, zmax}``.
 
@@ -270,7 +270,7 @@ Defined in ``brute_projection.hpp``.  Grid-based projection over a regular
 Slice
 -----
 
-Defined in ``slice.hpp``.  Extracts a 2D slice at a constant depth.
+Defined in ``slice.hpp``. Extracts a 2D slice at a constant depth.
 
 .. cpp:class:: Slice
 
@@ -299,8 +299,8 @@ Defined in ``slice.hpp``.  Extracts a 2D slice at a constant depth.
 Reduction functions
 -------------------
 
-Defined in ``reduction.hpp``.  Standalone functions that operate on walked
-ray segments.  These are used internally by ``Ray::integrate`` and
+Defined in ``reduction.hpp``. Standalone functions that operate on walked
+ray segments. These are used internally by ``Ray::integrate`` and
 ``Projection::makeProjection``.
 
 .. cpp:function:: std::vector<Float> reduce_sum(const std::vector<Ray::Segment>& segments, \
@@ -315,7 +315,7 @@ ray segments.  These are used internally by ``Ray::integrate`` and
 .. cpp:function:: std::vector<Float> reduce_volume_render(const std::vector<Ray::Segment>& segments, \
                                                           const PointCloud& cloud)
 
-   Requires 4 fields (R, G, B, alpha).  Returns a vector of length 3 (RGB).
+   Requires 4 fields (R, G, B, alpha). Returns a vector of length 3 (RGB).
 
 .. cpp:function:: std::vector<Float> reduce(const std::vector<Ray::Segment>& segments, \
                                             const PointCloud& cloud, ReductionMode mode)

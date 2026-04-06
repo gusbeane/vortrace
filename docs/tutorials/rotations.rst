@@ -46,7 +46,7 @@ Tait-Bryan angles
 -----------------
 
 For viewing angles that don't align with the coordinate axes, use the
-``yaw``, ``pitch``, and ``roll`` parameters.  These are applied as
+``yaw``, ``pitch``, and ``roll`` parameters. These are applied as
 extrinsic rotations about the z, y, and x axes respectively, centered on
 the ``center`` point.
 
@@ -72,7 +72,7 @@ the ``center`` point.
 
 .. tab:: C++
 
-   In C++, rotations are handled at the ray-grid level.  Build your own
+   In C++, rotations are handled at the ray-grid level. Build your own
    rotated start/end arrays and pass them to ``Projection``.
 
    .. code-block:: cpp
@@ -97,5 +97,5 @@ the ``center`` point.
 
 .. note::
 
-   Angles are in **radians**.  The ``center`` parameter must be set when
+   Angles are in **radians**. The ``center`` parameter must be set when
    using rotations -- it defines the point around which the grid is rotated.

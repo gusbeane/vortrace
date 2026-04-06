@@ -1,12 +1,12 @@
 Multi-Field Integration
 =======================
 
-``vortrace`` can project multiple scalar fields simultaneously.  This is useful
+``vortrace`` can project multiple scalar fields simultaneously. This is useful
 for computing mass-weighted quantities: project both the density and the
 density-weighted quantity, then take their ratio.
 
 Example: mass-weighted temperature
------------------------------------
+----------------------------------
 
 .. tab:: Python
 

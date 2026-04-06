@@ -2,8 +2,7 @@ Grid Projection
 ===============
 
 A grid projection traces a regular 2D grid of rays through the mesh and
-integrates a field along each ray.  This is the most common operation --
-it produces images like column density maps.
+integrates a field along each ray. This can be used to make images like column density maps.
 
 Setting up
 ----------
@@ -111,22 +110,17 @@ Plotting the result
       axes[1].set_ylabel("z")
       axes[1].set_title("xz projection")
 
-.. image:: /images/grid_projection_xy.png
-   :width: 80%
+.. image:: /images/grid_projection.png
+   :width: 100%
    :align: center
-   :alt: xy density projection
-
-.. image:: /images/grid_projection_xz.png
-   :width: 80%
-   :align: center
-   :alt: xz density projection
+   :alt: Side-by-side xy and xz density projections
 
 Projection planes
 -----------------
 
 In Python, the ``proj`` parameter provides a shorthand for the six Cartesian
 projection planes: ``'xy'`` (default), ``'xz'``, ``'yz'``, ``'yx'``, ``'zx'``,
-``'zy'``.  The ``center`` parameter is required for all planes except the
+``'zy'``. The ``center`` parameter is required for all planes except the
 default ``'xy'``.
 
 In C++, you construct the ray grid manually and can orient it in any direction.

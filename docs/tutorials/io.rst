@@ -2,7 +2,7 @@ Saving and Loading
 ==================
 
 ``vortrace`` provides :mod:`vortrace.io` for saving and loading projection grids
-and point clouds.  Both **NPZ** (default) and **HDF5** formats are supported.
+and point clouds. Both **NPZ** (default) and **HDF5** formats are supported.
 
 Saving and loading grids
 ------------------------
@@ -61,7 +61,7 @@ Saving and loading point clouds
 .. tab:: Python
 
    You can save and reload an entire ``ProjectionCloud`` (including
-   positions, fields, and bounding box).  The kD-tree is rebuilt on load.
+   positions, fields, and bounding box). The kD-tree is rebuilt on load.
 
    .. code-block:: python
 
@@ -73,7 +73,7 @@ Saving and loading point clouds
 
 .. tab:: C++
 
-   Cloud serialization is not provided by the C++ library.  Use your own
+   Cloud serialization is not provided by the C++ library. Use your own
    I/O format to store positions and fields, then call ``loadPoints()`` and
    ``buildTree()`` as usual.
 
@@ -88,7 +88,7 @@ Supported formats
      - Notes
    * - NPZ
      - ``.npz``
-     - Default.  No extra dependencies.
+     - Default. No extra dependencies.
    * - HDF5
      - ``.hdf5``, ``.h5``
-     - Requires ``h5py``.  Richer metadata support.
+     - Requires ``h5py``. Richer metadata support.

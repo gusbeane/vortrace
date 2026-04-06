@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-Step-by-step guides for each way to use vortrace.  Most pages include
+Step-by-step guides for each way to use vortrace. Most pages include
 examples in both Python and C++.
 
 .. toctree::

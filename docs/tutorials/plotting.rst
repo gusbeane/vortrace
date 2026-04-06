@@ -2,10 +2,10 @@ Plotting
 ========
 
 ``vortrace`` provides two convenience plotting functions in the :mod:`vortrace.plot`
-module.  These are thin wrappers around matplotlib and are **Python-only**.
+module. These are thin wrappers around matplotlib and are **Python-only**.
 
 ``plot_grid`` -- display a 2D projection
------------------------------------------
+----------------------------------------
 
 .. code-block:: python
 
@@ -33,7 +33,7 @@ Pass an existing axes to embed in a multi-panel figure:
    vt.plot.plot_grid(image_xz, ax=axes[1], label="xz")
 
 ``plot_ray`` -- plot a 1D ray profile
---------------------------------------
+-------------------------------------
 
 .. code-block:: python
 
@@ -47,7 +47,7 @@ Pass an existing axes to embed in a multi-panel figure:
    ax.set_ylabel("Density")
 
 Both functions return ``(fig, ax)`` or ``(fig, ax, im)`` so you can
-customize the plot further.  Additional keyword arguments are forwarded to
+customize the plot further. Additional keyword arguments are forwarded to
 ``imshow`` (for ``plot_grid``) or ``plot`` (for ``plot_ray``).
 
 .. note::
