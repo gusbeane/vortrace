@@ -85,17 +85,17 @@ Float Ray::findSplitPointDistance(const PointCloud &cloud,
     }
   }
 
+  // Analytic bisector-ray intersection
   Float s = findSplitPointDistance(pos1, pos2);
 
-  // If the analytic result is valid, return it directly
-  if (s < std::numeric_limits<Float>::max() * 0.5)
+  // If the analytic result is valid and within the segment, return it.
+  if (s < std::numeric_limits<Float>::max() * 0.5 &&
+      s >= s_lo - TOLERANCE && s <= s_hi + TOLERANCE)
     return s;
 
-  // Parallel bisector: binary search along [s_lo, s_hi] to find
-  // where the cell identity changes or to locate an intermediate cell.
-  std::cerr << "Warning: parallel bisector detected between cells "
-            << id1 << " and " << id2 << std::endl;
-
+  // Fall back to binary search when the analytic result is outside the
+  // segment (can happen with reduced-precision positions, e.g. float32)
+  // or when the bisector is parallel to the ray.
   Float lo = s_lo;
   Float hi = s_hi;
 
@@ -122,7 +122,8 @@ Float Ray::findSplitPointDistance(const PointCloud &cloud,
     }
   }
 
-  throw std::runtime_error("Binary search did not converge for parallel bisector");
+  throw std::runtime_error("Binary search did not converge for split point "
+    "between cells " + std::to_string(id1) + " and " + std::to_string(id2));
 }
 
 size_t Ray::perpPerturbToFindCell(const Point &pos, const PointCloud &cloud,
