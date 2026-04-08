@@ -90,3 +90,27 @@ class TestDegenerateSplitPoints:
         result = integrate_ray(pos, fields, vol, bb,
                                [2.0, 2.0, -0.1], [2.0, 2.0, 4.1])
         assert result > 0.0, f"Expected positive integral, got {result}"
+
+    def test_float32_precision_positions(self):
+        """Positions centered in float32 then converted to float64.
+
+        Regression test for split-point-outside-segment-bounds error
+        when positions have float32 quantization noise (e.g. from the
+        arepo snapshot loader).
+        """
+        n = 10
+        pos, fields, vol, bb = make_cubic_lattice(n)
+
+        # Shift to a large offset, round-trip through float32, shift back.
+        # This mimics loading coordinates as float32 and recentering.
+        offset = np.array([500.0, 500.0, 500.1])
+        pos_f32 = (pos + offset).astype(np.float32)
+        pos_f32 -= offset.astype(np.float32)
+        pos_degraded = pos_f32.astype(np.float64)
+
+        # Diagonal ray through the lattice
+        start = [-0.1, -0.1, -0.1]
+        end = [n - 0.9, n - 0.9, n - 0.9]
+        result = integrate_ray(pos_degraded, fields, vol, bb, start, end)
+        expected = ray_length(start, end)
+        np.testing.assert_allclose(result, expected, rtol=1e-3)
