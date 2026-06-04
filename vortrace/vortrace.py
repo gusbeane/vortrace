@@ -64,7 +64,8 @@ class ProjectionCloud:
         # Store original data
         self.pos_orig = np.ascontiguousarray(pos, dtype=np.float64)
         self.fields_orig = np.ascontiguousarray(fields, dtype=np.float64)
-        self.vol_orig = np.ascontiguousarray(vol, dtype=np.float64) if vol is not None else None
+        self.vol_orig = np.ascontiguousarray(vol, dtype=np.float64) \
+                        if vol is not None else None
         self.periodic = periodic
 
         fields_array = np.ascontiguousarray(self.fields_orig, dtype=np.float64)
