@@ -62,12 +62,13 @@ class ProjectionCloud:
             filtering is applied (all particles are loaded).
         """
         # Store original data
-        self.pos_orig = np.array(pos)
-        self.fields_orig = np.array(fields)
-        self.vol_orig = np.array(vol) if vol is not None else None
+        self.pos_orig = np.ascontiguousarray(pos, dtype=np.float64)
+        self.fields_orig = np.ascontiguousarray(fields, dtype=np.float64)
+        self.vol_orig = np.ascontiguousarray(vol, dtype=np.float64) \
+                        if vol is not None else None
         self.periodic = periodic
 
-        fields_array = self.fields_orig
+        fields_array = np.ascontiguousarray(self.fields_orig, dtype=np.float64)
         # Determine number of fields
         if fields_array.ndim == 1:
             self._nfields = 1
