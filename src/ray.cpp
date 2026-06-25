@@ -309,14 +309,15 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
     cloud.queryTreeK(pos, 3, ids, r2_vals);
 
     bool has_c = false, has_n = false;
+    bool three_equidistant = true;
     for (int i = 0; i < 3; i++) {
-      if (r2_vals[i] - r2_vals[0] >= TOLERANCE) break;
+      if (r2_vals[i] - r2_vals[0] >= TOLERANCE) { three_equidistant = false; break; }
       if (ids[i] == ctree_id) has_c = true;
       if (ids[i] == ntree_id) has_n = true;
     }
 
     // Expand search if neither c nor n found among equidistant nearest
-    if (!has_c && !has_n) {
+    if (three_equidistant && !has_c && !has_n) {
       const size_t K_EXPAND = 100;
       size_t k_big = std::min(K_EXPAND, cloud.get_npart());
       size_t ids_big[100];
