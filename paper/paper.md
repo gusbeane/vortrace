@@ -16,7 +16,7 @@ affiliations:
    index: 1
  - name: Max-Planck-Institut für Astrophysik, Germany
    index: 2
-date: 25 March 2026
+date: 9 September 2026
 bibliography: paper.bib
 ---
 
@@ -25,11 +25,11 @@ docker run --rm -it -v $PWD:/data -u $(id -u):$(id -g) openjournals/inara -o pdf
 
 # Summary
 
-It is common to use a Voronoi mesh to represent a continuous distribution, for example in astrophysical fluid simulations. This mesh has several attractive properties, such as the ability to smoothly adapt its resolution and for the mesh to move with the fluid's bulk velocity. However, Voronoi meshes are a more complicated data structure to represent and manipulate, and so integrating through them is more cumbersome. `vortrace` is a Python package for performing fast and exact integrals through Voronoi meshes. It makes the minimum number of nearest neighbor searches possible and does not perform a costly mesh construction. Its intended use case is for post-processing simulation output from codes that use Voronoi mesh representations, such as the magnetohydrodynamics code `AREPO` [@AREPO].
+It is common to use a Voronoi mesh to represent a continuous distribution, for example in astrophysical fluid simulations. This approach has several attractive properties, such as the ability for the mesh to smoothly adapt its resolution and for the mesh to move with the fluid's bulk velocity. However, Voronoi meshes are a more complicated data structure to represent and manipulate, and so integrating through them is more cumbersome. `vortrace` is a Python package for performing fast and exact integrals through Voronoi meshes. It makes the minimum number of nearest neighbor searches possible and does not perform a costly mesh construction. Its intended use case is for post-processing simulation output from codes that use Voronoi mesh representations, such as the magnetohydrodynamics code `AREPO` [@AREPO].
 
 # Statement of need
 
-Nearly all systems in astrophysics are observed in projection, and so efficient methods for taking projections of astrophysical simulations is essential. There are many choices for discretizing a continuous fluid distribution, and this choice impacts how easily this projection can be made. For example, in a Cartesian or adaptive mesh one can geometrically select the cells that intersect a ray and determine their intersection widths. Or in smoothed particle hydrodynamics, one can efficiently select the gas particles where the ray intersects their smoothing kernel.
+Nearly all systems in astrophysics are observed in projection, and so efficient methods for taking projections of astrophysical simulations is essential. The ease of this projection is directly impacted by the choice for discretizing the continuous fluid distribution. For example, in a Cartesian or adaptive mesh one can geometrically select the cells that intersect a ray and determine their intersection widths. Or in smoothed particle hydrodynamics, one can efficiently select the gas particles where the ray intersects their smoothing kernel.
 
 However, for approaches that rely on an unstructured Voronoi mesh, these projections are significantly more complicated. It is not obvious which cells intersect a ray and what their intersection widths are. If the Voronoi mesh is available, then the integral can be done exactly. But the mesh construction can be a costly operation, and navigating Voronoi mesh data structures adds algorithmic complexity. If the Voronoi mesh is not available, then one can attempt to sample points along the ray, determine the value of the field at each point, and take a sum. However, because one does not know *a priori* where the intersections are, and because a cell along the ray might be very small but nonetheless very dense, it is necessary to grossly oversample the ray to get an accurate result.
 
@@ -53,7 +53,7 @@ The general workflow of using the package is to first provide the interface with
 
 # Minimal example
 
-This example assumes standard `Gadget`/`AREPO` units of kpc for length and $10^10\,M_{\odot}$ for mass. A more thorough demonstration of the capabilities of `vortrace` is given in the QuickStart page of the documentation.
+This example assumes standard `Gadget`/`AREPO` units of kpc for length and $10^10\,M_{\odot}$ for mass. A more thorough demonstration of the capabilities of `vortrace` is given in the documentation.
 
 ```
 # assuming pos and rho have been defined elsewhere
@@ -82,10 +82,10 @@ proj_xy = pc.grid_projection(extent, npix, bounds)
 
 # AI usage disclosure
 
-The initial version of the code did not use generative AI tools. Later development has used Anthropic's Claude Code for refactoring, fixing bugs, writing documentation, and adding some new convenience features like support for periodic boundary conditions. All commits authored by Claude Code are indicated in the commit itself, a standard testing framework is used with continuous integration through GitHub actions, and all changes were submitted as pull requests and vetted by the main author. This manuscript was written by the authors with suggestions made by Claude.
+The initial version of the code did not use generative AI tools. Later development has used Anthropic's Claude Code for refactoring, fixing bugs, writing documentation, and adding some new convenience features like support for periodic boundary conditions. All commits authored by Claude Code are indicated in the commit itself, a standard testing framework is used with continuous integration through GitHub actions, and all changes were submitted as pull requests and vetted by the first author. This manuscript was written by the authors with suggestions made by Claude.
 
 # Acknowledgements
 
-We would like to thank Scott Lucchini for providing feedback and testing `vortrace` at various stages of development. We would also like to thank Lars Hernquist, Ruediger Pakmor, and Aaron Smith for helpful discussions.
+We would like to thank Scott Lucchini for providing extensive feedback and testing `vortrace` at various stages of development. We would also like to thank Lars Hernquist, Ruediger Pakmor, and Aaron Smith for helpful discussions.
 
 # References
