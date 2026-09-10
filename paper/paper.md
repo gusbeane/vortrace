@@ -25,7 +25,7 @@ docker run --rm -it -v $PWD:/data -u $(id -u):$(id -g) openjournals/inara -o pdf
 
 # Summary
 
-It is common to use a Voronoi mesh to represent a continuous distribution, for example in astrophysical fluid simulations. This approach has several attractive properties, such as the ability for the mesh to smoothly adapt its resolution and for the mesh to move with the fluid's bulk velocity. However, Voronoi meshes are a more complicated data structure to represent and manipulate, and so integrating through them is more cumbersome. `vortrace` is a Python package for performing fast and exact integrals through Voronoi meshes. It makes the minimum number of nearest neighbor searches possible and does not perform a costly mesh construction. Its intended use case is for post-processing simulation output from codes that use Voronoi mesh representations, such as the magnetohydrodynamics code `AREPO` [@AREPO].
+It is common to use a Voronoi mesh to represent a continuous distribution, for example in astrophysical fluid simulations. This approach has several attractive properties, such as the ability for the mesh to smoothly adapt its resolution and for the mesh to move with the fluid's bulk velocity. However, Voronoi meshes are a more complicated data structure to represent and manipulate, and so integrating through them is more cumbersome. `vortrace` is a Python package for performing fast and exact integrals through Voronoi meshes. It makes the minimum number of nearest neighbor searches possible and does not perform a costly mesh construction. Its intended use case is for post-processing simulation output from codes that use Voronoi mesh representations, such as the magnetohydrodynamics code `AREPO` [@AREPO]. Other codes which use or support Voronoi mesh representations include `TESS` [@Duffell2011], `FVMHD3D` [@Gaburov2012], `SHADOWFAX` [@Vadenbroucke2016], `ChaNGa` [@Chang2017], and `CMACIONIZE` [@Vandenbroucke2018].
 
 # Statement of need
 
@@ -53,7 +53,7 @@ The general workflow of using the package is to first provide the interface with
 
 # Minimal example
 
-This example assumes standard `Gadget`/`AREPO` units of kpc for length and $10^10\,M_{\odot}$ for mass. A more thorough demonstration of the capabilities of `vortrace` is given in the documentation.
+This example assumes standard `Gadget`/`AREPO` units of kpc for length and $10^{10}\,M_{\odot}$ for mass. A more thorough demonstration of the capabilities of `vortrace` is given in the documentation.
 
 ```
 # assuming pos and rho have been defined elsewhere
@@ -78,7 +78,7 @@ proj_xy = pc.grid_projection(extent, npix, bounds)
 
 # Research impact statement
 
-`vortrace` has been used in a number of publications for generating images and videos of galaxies [@Smith21;@Smith21b;@Smith24a;@Smith24b;@Beane25a;@Beane25b;@Ortame26;@Lucchini26;@Lucchini26b]. Furthermore, the algorithm developed by @Konietzka25 to compute electron dispersion measures for fast radio bursts is closely related to vortrace, demonstrating the broad utility of this type of approach.
+`vortrace` has been used in a number of publications for generating images and videos of galaxies [@Smith21;@Smith21b;@Smith24a;@Smith24b;@Beane25a;@Beane25b;@Ortame26;@Lucchini26;@Lucchini26b;@Smith2026;@Sullivan2026]. Furthermore, the algorithm developed by @Konietzka25 to compute electron dispersion measures for fast radio bursts is closely related to vortrace, demonstrating the broad utility of this type of approach.
 
 # AI usage disclosure
 
