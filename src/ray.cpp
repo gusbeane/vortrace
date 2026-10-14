@@ -10,6 +10,22 @@
 #define MAX_ITERATIONS 100000
 #define PERTURBATION_EPS (2 * TOLERANCE)
 #define MAX_PERTURBATION_CYCLES 1000
+// Relative tolerance for deciding that two generators are equidistant from
+// a point on the ray.  The comparison is made on squared distances, so the
+// tolerance scales with the nearest squared distance (the local cell size)
+// plus a floor set by the double-precision round-off of the coordinates
+// themselves (|p|^2 * eps^2-ish).  An absolute tolerance would be far too
+// loose for meshes whose cells are much smaller than the coordinate unit
+// (e.g. pc-sized cells in a kpc box, where r^2 ~ 1e-6): a third cell lying
+// strictly between two cells would then be mistaken for a tie and skipped.
+#define EQUIDISTANT_REL_TOL 1E-9
+#define EQUIDISTANT_ABS_FLOOR 1E-26
+
+static inline Float equidistantTol(Float r2_nearest, const Point &p)
+{
+  return EQUIDISTANT_REL_TOL * r2_nearest
+       + EQUIDISTANT_ABS_FLOOR * (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+}
 
 Ray::Ray(const Point &start, const Point &end)
 {
@@ -310,8 +326,9 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
 
     bool has_c = false, has_n = false;
     bool three_equidistant = true;
+    const Float eq_tol = equidistantTol(r2_vals[0], pos);
     for (int i = 0; i < 3; i++) {
-      if (r2_vals[i] - r2_vals[0] >= TOLERANCE) { three_equidistant = false; break; }
+      if (r2_vals[i] - r2_vals[0] >= eq_tol) { three_equidistant = false; break; }
       if (ids[i] == ctree_id) has_c = true;
       if (ids[i] == ntree_id) has_n = true;
     }
@@ -325,7 +342,7 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
       cloud.queryTreeK(pos, k_big, ids_big, r2_big);
 
       for (size_t i = 0; i < k_big; i++) {
-        if (r2_big[i] - r2_big[0] >= TOLERANCE) break;
+        if (r2_big[i] - r2_big[0] >= eq_tol) break;
         if (ids_big[i] == ctree_id) has_c = true;
         if (ids_big[i] == ntree_id) has_n = true;
         if (i == k_big -1 && !has_c && !has_n) {
@@ -355,7 +372,7 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
     else {
       // Case 1/1a: all equidistant cells are non-{c,n}.
       // A third cell lies between c and n — insert it.
-      if (r2_vals[0] + TOLERANCE < r2_vals[1]) {
+      if (r2_vals[0] + eq_tol < r2_vals[1]) {
         // Case 1: single cell strictly closest.
         pts.emplace_back(ids[0], next, s);
         next = pts.size() - 1;
@@ -377,7 +394,7 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
             perturbed[j] = pos[j] + sign * PERTURBATION_EPS * dir[j];
           size_t p_ids[2]; Float p_r2[2];
           cloud.queryTreeK(perturbed, 2, p_ids, p_r2);
-          if (p_r2[0] + TOLERANCE < p_r2[1] &&
+          if (p_r2[0] + equidistantTol(p_r2[0], perturbed) < p_r2[1] &&
               p_ids[0] != ctree_id && p_ids[0] != ntree_id)
             return p_ids[0];
           return SIZE_MAX;
