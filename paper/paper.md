@@ -21,7 +21,8 @@ bibliography: paper.bib
 ---
 
 <!-- compilation command (from within paper/)
-docker run --rm -it -v $PWD:/data -u $(id -u):$(id -g) openjournals/inara -o pdf,crossref ./paper.md -->
+docker run --rm -it -v $PWD:/data -u $(id -u):$(id -g) openjournals/inara -o pdf,crossref ./paper.md 
+-->
 
 # Summary
 
@@ -40,6 +41,14 @@ However, for approaches that rely on an unstructured Voronoi mesh, these project
 Many tools exist for this common operation of projections through astrophysical fluids. We focus here specifically on their treatment of unstructured Voronoi meshes.
 
 Many packages simply treat the Voronoi mesh as if it were an SPH simulation, taking the smoothing length of each particle to be a constant multiple of the cell size. This is done in, e.g., `yt` [@yt] and `gadgetviewer` [@gadgetviewer]. These codes have an advantage of being efficient, easy to use and `yt` integrates naturally into Python-based workflows. However, the computed projections are not exact and will overly smooth the integral, especially in dense regions.
+
+We demonstrate this in \autoref{fig:yt}, showing a projection through an isolated dwarf-galaxy simulation from [@Smith2026], with a mass resolution of $2.5\,M_{\odot}$ at $t\sim800\,\text{Myr}$. The left and middle panels show the exact (`vortrace`) and SPH (`yt`) projections. Insets for an underdense region and a dense region are shown with sizes of 250\ pc and 15\ pc respectively. These insets have their own color bars to better show the difference between the two projections. It is clear from the visible edges in the insets that the `vortrace` projection more faithfully represents the underlying Voronoi mesh, while the `yt` projection smooths this small-scale structure. This is shown quantitatively in the right panel, where errors in the insets are typically on the order of $10\text{--}20\%$.
+
+For the projection in \autoref{fig:yt}, we further show the distribution of errors for all pixels in \autoref{fig:hist}. The distribution is roughly symmetric with $10\%$ of pixels having errors greater than $\sim7\%$. However, the `yt` projection is significantly faster than the `vortrace` projection (9.3\ s vs. 282\ s single-threaded). For quick visualization purposes, the accuracy differences between the two is not so important, and so `yt` may be preferred. However, for use cases where accuracy is important, especially in the tails of the integrated distribution, then taking the exact projection would be preferred.
+
+![Column density through a 4 kpc slab of an isolated dwarf-galaxy simulation. The mass resolution is RES and cells vary in size from 1 to 7 pc in the disk. The main image has side length of $6\,\text{kpc}$ with $1024^2$ pixels. The left panel shows the exact computation with `vortrace` and the middle panel shows the SPH-kernel calculation with `yt`. We use the default smoothing length of $h=2\,r_\mathrm{cell}$. The right panel shows the relative difference between the two. Each panel has two insets, a 250\ pc window on an underdense region (upper) and a 5\ pc window on a dense region (lower). Each inset has a separate $256^2$ grid and its own colorbar in the left and middle panels. The script that produces this figure is included in the repository (`paper/yt_comparison/make_yt_comparison.py`).\label{fig:yt}](yt_comparison/yt_comparison.pdf)
+
+![Distribution of the per-pixel relative error of the SPH-kernel treatment, $(\mathrm{yt} - \mathrm{vortrace}) / \mathrm{vortrace}$, for the projection of \autoref{fig:yt}.\label{fig:hist}](yt_comparison/error_histogram.pdf){ width=70% }
 
 Other packages compute the exact result by constructing the Voronoi mesh, either for the full box or in a sufficiently large cylinder around the ray. This is done in, e.g., `COLT` [@COLT] and `SKIRT` [@SKIRT9]. These codes perform full radiative transfer calculations, but for simpler integrals the extra machinery is not necessary. A similar method using the full mesh is implemented in the private version of `AREPO`. These codes do not have simple Python interfaces, and the mesh construction can be expensive, making their integration in workflows that do not require radiative transfer or the full mesh cumbersome.
 

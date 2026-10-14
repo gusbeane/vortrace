@@ -1,0 +1,162 @@
+{
+  "snapshot": {
+    "name": "snap_500.0.hdf5",
+    "parts": 4,
+    "ncells": 27323638,
+    "box_size": 180.0
+  },
+  "settings": {
+    "vortrace": {
+      "center": [
+        90.0,
+        90.0
+      ],
+      "width": 6.0,
+      "zrange": [
+        88.0,
+        92.0
+      ],
+      "npix": 1024
+    },
+    "yt": {
+      "center": [
+        90.0,
+        90.0
+      ],
+      "width": 6.0,
+      "zrange": [
+        88.0,
+        92.0
+      ],
+      "npix": 1024,
+      "hsml_factor": 2.0
+    }
+  },
+  "insets": {
+    "dense": {
+      "center": "peak",
+      "width": 0.015,
+      "npix": 256,
+      "hsml_factor": 2.0
+    },
+    "void": {
+      "center": [
+        -0.25,
+        2.0
+      ],
+      "width": 0.25,
+      "npix": 256,
+      "hsml_factor": 2.0
+    }
+  },
+  "figure": {
+    "vmax_factor": 3.0,
+    "err_lim": 0.25,
+    "dense_threshold": 0.0001859888840472892
+  },
+  "timings": {
+    "note": "best of 1 run(s), wall-clock seconds, main image only",
+    "vortrace": {
+      "build_s": 8.733479292015545,
+      "projection_s": 273.4645779579878
+    },
+    "yt": {
+      "load_s": 0.5629869579570368,
+      "projection_s": 8.71536799997557
+    }
+  },
+  "machine": {
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu_count": 8,
+    "python": "3.14.6"
+  },
+  "versions": {
+    "vortrace": "0.1.3",
+    "yt": "4.4.2",
+    "numpy": "2.4.4",
+    "matplotlib": "3.10.8"
+  },
+  "yt_settings": {
+    "dataset_class": "ArepoHDF5Dataset",
+    "smoothing_factor": 2.0,
+    "kernel_name": "cubic",
+    "sph_smoothing_style": "scatter",
+    "use_sph_normalization": true,
+    "field": "('gas', 'density') projected along z via ds.proj(..., data_source=ds.box(z slab)).to_frb(...)"
+  },
+  "stats": {
+    "total_mass_vortrace": 0.0055051340876353504,
+    "total_mass_yt": 0.005503903078965434,
+    "peak_column_density_vortrace": 0.02003425469732325,
+    "peak_column_density_yt": 0.02911831525060752,
+    "peak_ratio_yt_over_vortrace": 1.4534264284110345,
+    "ratio_yt_over_vortrace_percentiles": {
+      "1": 0.8769055543647364,
+      "5": 0.9228378052362654,
+      "50": 0.9984285232126894,
+      "95": 1.0736109598669947,
+      "99": 1.1226324375578236
+    },
+    "ratio_at_vortrace_peak": 0.7754642514000483,
+    "insets": {
+      "dense": {
+        "window_kpc": [
+          -0.4791796875,
+          -0.4641796875,
+          -0.6373828125,
+          -0.6223828125
+        ],
+        "npix": 256,
+        "ratio_min": 0.3982458578412904,
+        "ratio_max": 1.8051213087506452,
+        "ratio_percentiles": {
+          "1": 0.6267840681681417,
+          "5": 0.740095197729824,
+          "50": 0.9735038956374495,
+          "95": 1.2360017087155575,
+          "99": 1.356250495852284
+        },
+        "peak_ratio_yt_over_vortrace": 1.5490536834044875,
+        "mean_column_density_vortrace": 0.00566629300287285,
+        "mean_column_density_yt": 0.005689393934789065
+      },
+      "void": {
+        "window_kpc": [
+          -0.375,
+          -0.125,
+          1.875,
+          2.125
+        ],
+        "npix": 256,
+        "ratio_min": 0.7050333610347258,
+        "ratio_max": 1.2333546381278329,
+        "ratio_percentiles": {
+          "1": 0.8221702689006202,
+          "5": 0.8803055489514049,
+          "50": 0.9891270106890553,
+          "95": 1.0973650915961919,
+          "99": 1.1448498171543173
+        },
+        "peak_ratio_yt_over_vortrace": 1.0526899640547227,
+        "mean_column_density_vortrace": 2.2336427932730105e-05,
+        "mean_column_density_yt": 2.21708186346456e-05
+      }
+    },
+    "dense_pixel_fraction": 0.25,
+    "rel_err_all_percentiles": {
+      "1": -0.12309444563526356,
+      "5": -0.07716219476373459,
+      "50": -0.0015714767873106217,
+      "95": 0.07361095986699467,
+      "99": 0.12263243755782371
+    },
+    "rel_err_dense_percentiles": {
+      "1": -0.16705250092775803,
+      "5": -0.10006892477342648,
+      "50": -0.002205142808421545,
+      "95": 0.09962163948326294,
+      "99": 0.18153650486780792
+    }
+  }
+}
