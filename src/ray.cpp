@@ -10,14 +10,7 @@
 #define MAX_ITERATIONS 100000
 #define PERTURBATION_EPS (2 * TOLERANCE)
 #define MAX_PERTURBATION_CYCLES 1000
-// Relative tolerance for deciding that two generators are equidistant from
-// a point on the ray.  The comparison is made on squared distances, so the
-// tolerance scales with the nearest squared distance (the local cell size)
-// plus a floor set by the double-precision round-off of the coordinates
-// themselves (|p|^2 * eps^2-ish).  An absolute tolerance would be far too
-// loose for meshes whose cells are much smaller than the coordinate unit
-// (e.g. pc-sized cells in a kpc box, where r^2 ~ 1e-6): a third cell lying
-// strictly between two cells would then be mistaken for a tie and skipped.
+
 #define EQUIDISTANT_REL_TOL 1E-9
 #define EQUIDISTANT_ABS_FLOOR 1E-26
 
