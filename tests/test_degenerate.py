@@ -114,3 +114,24 @@ class TestDegenerateSplitPoints:
         result = integrate_ray(pos_degraded, fields, vol, bb, start, end)
         expected = ray_length(start, end)
         np.testing.assert_allclose(result, expected, rtol=1e-3)
+
+    def test_split_point_on_unrelated_face(self):
+        """Split point of the end cells lands exactly on the face between two
+        other cells (Case 1a, different cell on each side).
+
+        Regression test: the cell before the split point used to have its
+        path length attributed to the cell after it, which is invisible with
+        a uniform field.
+        """
+        # Bisector of cells 0 and 3 is x=2, which is also the 1/2 face.
+        pos = np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0],
+                        [2.5, 0.0, 0.0], [4.0, 0.0, 0.0]])
+        fields = np.array([1.0, 2.0, 3.0, 4.0])
+        pc = vt.ProjectionCloud(pos, fields, vol=np.ones(4),
+                                boundbox=[-1.0, 5.0, -1.0, 1.0, -1.0, 1.0])
+        dens, cell_ids, s_vals, ds_vals = pc.traced_projection(
+            [0.0, 0.0, 0.0], [4.0, 0.0, 0.0], return_midpoint=False)
+        np.testing.assert_array_equal(cell_ids, [0, 1, 2, 3])
+        np.testing.assert_allclose(s_vals, [0.0, 0.75, 2.0, 3.25], atol=1e-12)
+        np.testing.assert_allclose(ds_vals, [0.75, 1.25, 1.25, 0.75], atol=1e-12)
+        np.testing.assert_allclose(dens, 10.0, rtol=1e-12)

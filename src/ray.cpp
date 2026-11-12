@@ -271,8 +271,13 @@ const std::vector<Ray::Segment>& Ray::walk(const PointCloud &cloud)
 
     // Skip zero-width segments (arise when Case 1a inserts two different
     // intermediate cells at the same split-point position).
-    // Update the open cell identity but keep entry_s unchanged.
+    // The open cell (always pts[current]'s cell) ends here: close it
+    // before switching to the cell on the other side.
     if (pts[next].s - pts[current].s < 1e-14) {
+      if (pts[current].s > entry_s) {
+        segments.push_back({open_cell, entry_s, pts[current].s});
+        entry_s = pts[current].s;
+      }
       current = next;
       ctree_id = pts[current].tree_id;
       open_cell = ctree_id;
