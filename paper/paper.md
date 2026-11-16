@@ -95,6 +95,6 @@ The initial version of the code did not use generative AI tools. Later developme
 
 # Acknowledgements
 
-We would like to thank Scott Lucchini for providing extensive feedback and testing `vortrace` at various stages of development. We would also like to thank Lars Hernquist, Ruediger Pakmor, and Aaron Smith for helpful discussions.
+We would like to thank Scott Lucchini for providing extensive feedback and testing `vortrace` at various stages of development. We would also like to thank Lars Hernquist, Ruediger Pakmor, Adrian Price-Whelan, and Aaron Smith for helpful discussions.
 
 # References
