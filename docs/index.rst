@@ -49,6 +49,7 @@ Features
 
    algorithm
    edgecases
+   comparison
 
 .. toctree::
    :maxdepth: 2

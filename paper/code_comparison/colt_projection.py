@@ -48,6 +48,7 @@ import functools
 import os
 import re
 import resource
+import shutil
 import subprocess
 import sys
 import time
@@ -63,6 +64,9 @@ import common  # noqa: E402  pylint: disable=wrong-import-position
 # Locations and build configuration
 # ---------------------------------------------------------------------------
 COLT_SRC = common.EXTERNAL_DIR / "colt"          # unpacked bitbucket tarball
+# commit of the master tarball used for the timings (the tarball has no
+# .git; this is the hash in its top-level directory name)
+COLT_SOURCE_COMMIT = "8d0702d11fe4"
 COLT_BUILD = common.EXTERNAL_DIR / "colt_build"  # objects, defines, exe
 COLT_EXE = COLT_BUILD / "colt"
 DEPS_PREFIX = common.EXTERNAL_DIR / "deps"       # locally built yaml-cpp
@@ -82,11 +86,27 @@ COLT_DEFINES = {
 # Make variables overriding the MACHINE=homebrew profile: local yaml-cpp
 # prefix, homebrew mpfr (for -I/-L), and -O3 (the homebrew profile has no
 # optimisation flag at all).
-COLT_MAKE_VARS = {
-    "YAML": str(DEPS_PREFIX),
-    "MPFR": "/opt/homebrew/opt/mpfr",
-    "CFLAGS": "-Xpreprocessor -fopenmp -std=c++20 -O3",
-}
+if sys.platform == "darwin":
+    COLT_MAKE_VARS = {
+        "YAML": str(DEPS_PREFIX),
+        "MPFR": "/opt/homebrew/opt/mpfr",
+        "CFLAGS": "-Xpreprocessor -fopenmp -std=c++20 -O3",
+    }
+else:
+    # Linux: the Makefile picks the ubuntu/fedora/gcc profile, which links
+    # the distribution's hdf5, yaml-cpp, gsl, CGAL, gmp and mpfr; NO_MPI
+    # swaps mpicxx for g++.  Only the optimisation flags are overridden
+    # (the profile adds -Wall).
+    COLT_MAKE_VARS = {"CFLAGS": "-fopenmp -std=c++20 -O3"}
+    # gcc 11 (Ubuntu 22.04 default) rejects COLT's ``if constexpr`` function
+    # pointer comparisons in cube_projections.cc; gcc 13 compiles them.
+    COLT_MAKE_VARS["CC"] = shutil.which("g++-13") or "g++"
+    # COLT needs CGAL >= 5.6 (Robust_circumcenter_filtered_traits_3);
+    # Ubuntu 22.04 ships 5.4.  A header-only CGAL release unpacked into
+    # deps/src/CGAL-<version> takes precedence over the system headers.
+    _cgal = sorted((DEPS_PREFIX / "src").glob("CGAL-*"))
+    if _cgal:
+        COLT_MAKE_VARS["CGAL"] = str(_cgal[-1])
 
 T_CONST_K = 1.0e4         # constant gas temperature in the ICs (COLT needs T)
 OUTPUT_BASE = "proj"
@@ -139,7 +159,8 @@ def ensure_built(nthreads_build=8):
         return COLT_EXE
     if not COLT_SRC.exists():
         raise FileNotFoundError(f"COLT source not found at {COLT_SRC}")
-    _ensure_yaml_cpp()
+    if "YAML" in COLT_MAKE_VARS:     # locally built yaml-cpp
+        _ensure_yaml_cpp()
     COLT_BUILD.mkdir(parents=True, exist_ok=True)
     defines = COLT_BUILD / "defines.yaml"
     defines.write_text(_yaml_dump_defines(COLT_DEFINES), encoding="utf-8")
@@ -157,6 +178,7 @@ def colt_provenance():
     """Source and build provenance for the stats file."""
     info = {"source_dir": str(COLT_SRC),
             "source": "bitbucket.org/aaron_smith/colt (master tarball)",
+            "source_commit": COLT_SOURCE_COMMIT,
             "exe": str(COLT_EXE)}
     makefile = COLT_SRC / "Makefile"
     if makefile.exists():
@@ -293,13 +315,9 @@ def parse_colt_log(text):
 
 @functools.lru_cache(maxsize=None)
 def _time_l_works():
-    """Whether ``/usr/bin/time -l`` runs here (sandboxes may block it)."""
-    try:
-        proc = subprocess.run(["/usr/bin/time", "-l", "true"],
-                              capture_output=True, check=False)
-        return proc.returncode == 0
-    except OSError:
-        return False
+    """Whether ``/usr/bin/time`` can report the peak RSS here (macOS ``-l``,
+    GNU ``-v``; sandboxes may block the former)."""
+    return common._time_l_works()  # pylint: disable=protected-access
 
 
 def project(snap, geom, *, nthreads, workdir, exe=None, reuse_ics=False,
@@ -345,9 +363,11 @@ def project(snap, geom, *, nthreads, workdir, exe=None, reuse_ics=False,
         measure_rss=use_time)
     if use_time:
         rss = common.run_logged.last_peak_rss_bytes
-        rss_source = "/usr/bin/time -l"
-    else:   # macOS reports ru_maxrss in bytes
+        rss_source = "/usr/bin/time " + common._TIME_FLAG  # pylint: disable=protected-access
+    else:   # macOS reports ru_maxrss in bytes, Linux in kilobytes
         rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        if sys.platform != "darwin":
+            rss *= 1024
         rss_source = ("getrusage(RUSAGE_CHILDREN).ru_maxrss "
                       "(max over all children so far)")
 

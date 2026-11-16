@@ -13,18 +13,16 @@ Two test galaxies are used:
   (``tests/test_data/galaxy_interaction.hdf5``, 7217 gas cells), projected
   as in the quickstart (75 kpc window, 256^2, full box depth).
 - ``large``: the isolated dwarf-galaxy snapshot of the paper's yt figure
-  (``data/snap_500.*.hdf5``, 27M cells, not shipped with the repository),
-  projected as in ``paper/yt_comparison`` (6 kpc window, 1024^2, 4 kpc slab).
+  (``data/snap_500.*.hdf5``, 27M cells, not shipped with the repository).
+  Every code, vortrace included, is given the same point set: the cells
+  inside the domain [87, 93] x [87, 93] x [88, 92] kpc.  The image is the
+  6 kpc face of that domain at 1024^2, integrated through its full 4 kpc
+  depth, as in ``paper/yt_comparison``.
 
-The paper's own 6 kpc, 1024^2 projection of the large galaxy could not be
-reproduced with either mesh code on the 24 GiB workstation used here: COLT's
-CGAL mesh needs ~1.3 kB per cell and SKIRT's Voro++ mesh ~0.8 kB per cell,
-and 23 of the 27 million cells lie inside that 6 x 6 x 4 kpc column, so the
-mesh codes run out of memory (SKIRT thrashed in swap and was killed).  The
-large-galaxy comparison is therefore made on a 1 kpc window, handing the mesh
-codes only the cells within 0.25 kpc (8 kpc in z) of the projected column
-(``--width 1 --npix 256 --subbox-margin 0.25 --subbox-zmargin 8 --tag w1``);
-vortrace still works on the full 27M-cell cloud.
+All three codes therefore see identical generators.  The domain is clipped
+because SKIRT's Voro++ tessellation of the full 180 kpc box is impractically
+slow (its search grid is capped at 250^3 blocks) and because SKIRT always
+integrates through the whole depth of its domain.
 
 COLT and SKIRT are driven through ``colt_projection.py`` and
 ``skirt_projection.py`` in this directory, which build the codes on first
@@ -32,10 +30,9 @@ use into ``data/external/`` (see their docstrings for the pinned versions).
 Neither code is a dependency of ``vortrace``.
 
     python paper/code_comparison/make_code_comparison.py --galaxy small \\
-        --repeat 3 --cache data/external/runs/cache_small.npz
+        --threads 32 --repeat 3
     python paper/code_comparison/make_code_comparison.py --galaxy large \\
-        --width 1 --npix 256 --subbox-margin 0.25 --subbox-zmargin 8 \\
-        --tag w1 --cache data/external/runs/cache_large_w1.npz
+        --threads 32 --cache data/external/runs/cache_large.npz
 
 Outputs (written next to this script by default):
 
@@ -47,12 +44,10 @@ Outputs (written next to this script by default):
 from __future__ import annotations
 
 import argparse
-import gc
 import importlib
 import importlib.metadata
 import json
 import os
-import resource
 import sys
 import time
 from pathlib import Path
@@ -85,6 +80,9 @@ GALAXIES = {
     "large": {
         "snapshot": REPO_ROOT / "data" / "snap_500.0.hdf5",
         "description": "isolated dwarf galaxy (paper yt comparison)",
+        # the point set is cut to this domain for every code; the image is
+        # its x-y face and the rays span its full depth
+        "domain": ((87.0, 87.0, 88.0), (93.0, 93.0, 92.0)),
         "center": (90.0, 90.0), "width": 6.0, "npix": 1024,
         "slab": (88.0, 92.0),
     },
@@ -95,41 +93,76 @@ GALAXIES = {
 # vortrace
 # ---------------------------------------------------------------------------
 
-def project_vortrace(snap, geom, *, repeat=1):
-    """Exact column density with vortrace (kD-tree build + projection)."""
-    t0 = time.perf_counter()
-    b = snap.box_size
-    pc = vt.ProjectionCloud(snap.pos, snap.rho, vol=snap.vol,
-                            boundbox=[0, b, 0, b, 0, b])
-    t_build = time.perf_counter() - t0
+# Run in a fresh interpreter so that vortrace is measured like the external
+# codes: one process that reads its input file, does the work and writes the
+# image, timed from outside and with its own peak RSS.
+_VORTRACE_CHILD = r"""
+import json, sys, time
+t0 = time.perf_counter()
+import numpy as np, vortrace as vt
+cfg = json.loads(sys.argv[1])
+t1 = time.perf_counter()
+d = np.load(cfg["input"])
+pos, rho, vol = d["pos"], d["rho"], d["vol"]
+t2 = time.perf_counter()
+pc = vt.ProjectionCloud(pos, rho, vol=vol, boundbox=cfg["boundbox"])
+t3 = time.perf_counter()
+img = pc.grid_projection(cfg["extent"], cfg["npix"], cfg["zrange"], center=None)
+t4 = time.perf_counter()
+np.save(cfg["output"], img)
+t5 = time.perf_counter()
+print("TIMINGS " + json.dumps({"import_s": t1 - t0, "read_input_s": t2 - t1,
+    "build_s": t3 - t2, "projection_s": t4 - t3, "write_output_s": t5 - t4}))
+"""
 
+
+def project_vortrace(snap, geom, domain, *, workdir, repeat=1):
+    """Exact column density with vortrace (kD-tree build + projection).
+    ``domain`` is the ``(lo, hi)`` corners of the region holding the cells.
+
+    Like the external codes, vortrace runs as its own process: ``total_s``
+    covers writing its input file, the whole process (interpreter start-up,
+    imports, reading the input, tree build, projection, writing the image)
+    and reading the image back.  Best of ``repeat`` by ``run_s``."""
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+    inp, out = workdir / "input.npz", workdir / "image.npy"
+    _, t_write = common.timed(np.savez, inp, pos=snap.pos, rho=snap.rho,
+                              vol=snap.vol)
+    lo, hi = domain
     ext = geom.extent
-    extent = [[ext[0], ext[1]], [ext[2], ext[3]]]
-    image, t_proj = None, np.inf
+    cfg = {"input": str(inp), "output": str(out), "npix": geom.npix,
+           "boundbox": [lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]],
+           "extent": [[ext[0], ext[1]], [ext[2], ext[3]]],
+           "zrange": list(geom.zrange)}
+    timings = None
     for _ in range(repeat):
-        t0 = time.perf_counter()
-        img = pc.grid_projection(extent, geom.npix, list(geom.zrange),
-                                 center=None)
-        dt = time.perf_counter() - t0
-        if dt < t_proj:
-            image, t_proj = img, dt
-    return pc, ProjectionResult(
-        code="vortrace", image=image,
-        timings={"build_s": t_build, "projection_s": t_proj,
-                 "total_s": t_build + t_proj},
+        log = workdir / "vortrace.log"
+        _, run_s = common.run_logged(
+            [sys.executable, "-c", _VORTRACE_CHILD, json.dumps(cfg)],
+            cwd=workdir, log_path=log)
+        if timings is None or run_s < timings["run_s"]:
+            line = next(l for l in log.read_text().splitlines()
+                        if l.startswith("TIMINGS "))
+            timings = dict(json.loads(line[8:]), run_s=run_s)
+            rss = common.run_logged.last_peak_rss_bytes
+    image, t_read = common.timed(np.load, out)
+    timings.update(write_input_s=t_write, read_output_s=t_read)
+    timings["total_s"] = t_write + timings["run_s"] + t_read
+    # ponytail: OpenMP is detected from the runtime symbols in the extension
+    # module (libgomp / libomp); expose it from C++ if this ever misfires.
+    lib = Path(vt.Cvortrace.__file__).read_bytes()
+    has_omp = b"GOMP_parallel" in lib or b"__kmpc_fork_call" in lib
+    nthreads = (int(os.environ.get("OMP_NUM_THREADS") or os.cpu_count())
+                if has_omp else 1)
+    return ProjectionResult(
+        code="vortrace", image=image, timings=timings,
         settings={"version": importlib.metadata.version("vortrace"),
-                  "note": "serial build (OpenMP not available with Apple "
-                          "clang); kD-tree build timed separately"},
-        nthreads=1)
-
-
-def vortrace_reference(pc, geom):
-    """vortrace image for an alternative geometry (e.g. a code's effective
-    z range) using an already built cloud."""
-    ext = geom.extent
-    extent = [[ext[0], ext[1]], [ext[2], ext[3]]]
-    return pc.grid_projection(extent, geom.npix, list(geom.zrange),
-                              center=None)
+                  "peak_rss_bytes": rss,
+                  "note": "separate process; OpenMP threads from "
+                          "OMP_NUM_THREADS (1 if the build has no OpenMP, "
+                          "e.g. Apple clang); kD-tree build is serial"},
+        nthreads=nthreads)
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +174,7 @@ def external_module(code):
     return importlib.import_module(f"{code}_projection")
 
 
-def external_kwargs(code, snap_ext, subbox):
+def external_kwargs(code, snap, domain):
     """Extra keyword arguments for a code's ``project``.
 
     SKIRT must be told the domain that contains the cells it is given
@@ -150,9 +183,8 @@ def external_kwargs(code, snap_ext, subbox):
     """
     kwargs = {}
     if code == "skirt":
-        if subbox is not None:
-            kwargs["domain"] = (subbox["lo"], subbox["hi"])
-        if snap_ext.ncells > 1_000_000:
+        kwargs["domain"] = domain
+        if snap.ncells > 1_000_000:
             kwargs["input_format"] = "scol"
     return kwargs
 
@@ -167,21 +199,6 @@ def run_external(code, snap, geom, *, nthreads, workdir, repeat=1, **kwargs):
         if best is None or result.timings["total_s"] < best.timings["total_s"]:
             best = result
     return best
-
-
-def external_geometry(code, geom, subbox, box_size):
-    """Geometry a code will actually integrate.
-
-    COLT limits each ray to ``proj_depth`` so it reproduces the slab.  SKIRT
-    integrates through the whole z extent of its domain (the subbox or the
-    full box), so its image is compared with a vortrace image over that z
-    range.
-    """
-    if code == "skirt":
-        zr = (subbox["lo"][2], subbox["hi"][2]) if subbox else (0.0, box_size)
-        if tuple(zr) != tuple(geom.zrange):
-            return Geometry(geom.center, geom.width, tuple(zr), geom.npix)
-    return geom
 
 
 # ---------------------------------------------------------------------------
@@ -265,8 +282,10 @@ def timing_table(stats):
             "max rel. diff. vs vortrace |",
             "|---|---:|---:|---:|---:|---:|---:|---:|"]
     vtt = stats["vortrace"]["timings"]
-    rows.append(f"| vortrace | 1 | {_fmt_s(vtt['build_s'])} | "
-                f"{_fmt_s(vtt['projection_s'])} | -- | {_fmt_s(vtt['total_s'])} | "
+    rows.append(f"| vortrace | {stats['vortrace'].get('nthreads', 1)} | "
+                f"{_fmt_s(vtt['build_s'])} | "
+                f"{_fmt_s(vtt['projection_s'])} | {_fmt_s(vtt['run_s'])} | "
+                f"{_fmt_s(vtt['total_s'])} | "
                 f"{_fmt_gb(stats['vortrace'].get('peak_rss_bytes'))} | -- |")
     for run in stats["external"]:
         t = run["timings"]
@@ -291,8 +310,9 @@ def write_timings_md(path, galaxy, stats):
     header = f"## {galaxy}"
     sn, g = stats["snapshot"], stats["geometry"]
     cells = f"{sn['ncells']} cells"
-    if sn.get("ncells_external") not in (None, sn["ncells"]):
-        cells += f" ({sn['ncells_external']} handed to the mesh codes)"
+    if sn.get("domain"):
+        cells += (f" inside {sn['domain']} kpc "
+                  f"(of {sn['ncells_snapshot']} in the snapshot)")
     section = (f"{header}\n\n{sn['description']}: {cells}, "
                f"{g['npix']}^2 pixels, {g['width']} kpc window, "
                f"z in {g['zrange']} kpc.  Best of {stats['repeat']} run(s); "
@@ -324,22 +344,11 @@ def parse_args():
                    help="External codes to run (default: both)")
     p.add_argument("--threads", type=int, nargs="+", default=[1, 8],
                    help="Thread counts for the external codes "
-                        "(vortrace is serial on this machine)")
+                        "(vortrace uses OMP_NUM_THREADS)")
     p.add_argument("--repeat", type=int, default=1,
                    help="Repeat each timed run this many times; report the "
                         "best")
     p.add_argument("--npix", type=int, default=None)
-    p.add_argument("--width", type=float, default=None)
-    p.add_argument("--subbox-margin", type=float, default=None,
-                   help="Hand the external codes only the cells within this "
-                        "margin (kpc) of the projected region instead of "
-                        "the full box; the margin must exceed the local "
-                        "cell size by a wide factor (default: full box)")
-    p.add_argument("--subbox-zmargin", type=float, default=None,
-                   help="Margin along z for the subbox (default: same as "
-                        "--subbox-margin).  SKIRT integrates the whole z "
-                        "extent of what it is given, so a wide z margin "
-                        "keeps its image close to the slab projection")
     p.add_argument("--tag", default=None,
                    help="Suffix for the output names, e.g. 'w1' gives "
                         "stats_large_w1.json (default: none)")
@@ -404,15 +413,27 @@ def main():
         print(f"  {n_moved} cells with coincident positions displaced by "
               "1e-6 kpc (handed to every code)")
 
+    # Every code gets the same cells: those inside the galaxy's domain (the
+    # whole box if none is configured).
+    ncells_snapshot = snap.ncells
+    domain = cfg.get("domain") or ((0.0, 0.0, 0.0), (b, b, b))
+    if cfg.get("domain"):
+        snap = snap.subbox(*domain)
+        print(f"  domain {domain}: {snap.ncells} cells kept")
+
     center = tuple(cfg.get("center") or (b / 2, b / 2))
     zrange = tuple(cfg["slab"] or (0.0, b))
-    geom = Geometry(center=center, width=args.width or cfg["width"],
+    # SKIRT integrates through the whole depth of its domain
+    assert zrange == (domain[0][2], domain[1][2])
+    geom = Geometry(center=center, width=cfg["width"],
                     zrange=zrange, npix=args.npix or cfg["npix"])
     print(f"Geometry: {geom}")
 
     stats = {
         "snapshot": {"name": Path(snap_path).name, "parts": snap.nparts,
                      "ncells": snap.ncells, "box_size": b,
+                     "ncells_snapshot": ncells_snapshot,
+                     "domain": cfg.get("domain"),
                      "description": cfg["description"], "load_s": t_load,
                      "duplicate_cells_displaced": n_moved},
         "geometry": geom.to_dict(),
@@ -424,77 +445,39 @@ def main():
 
     # vortrace --------------------------------------------------------------
     print("vortrace ...")
-    pc, res_vt = project_vortrace(snap, geom, repeat=args.repeat)
+    res_vt = project_vortrace(snap, geom, domain, repeat=args.repeat,
+                              workdir=args.workdir / f"vortrace_{label}")
     print(f"  build {res_vt.timings['build_s']:.2f} s, projection "
           f"{res_vt.timings['projection_s']:.2f} s")
-    # ru_maxrss is in bytes on macOS and kilobytes on Linux; it covers this
-    # whole process (snapshot load included), which is what a user pays.
-    maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    if sys.platform != "darwin":
-        maxrss *= 1024
     stats["vortrace"] = {"timings": res_vt.timings,
                          "settings": res_vt.settings,
-                         "peak_rss_bytes": int(maxrss)}
+                         "nthreads": res_vt.nthreads,
+                         "peak_rss_bytes": res_vt.settings["peak_rss_bytes"]}
     images = {"vortrace": res_vt.image}
     references = {}
-
-    # cells handed to the mesh codes --------------------------------------
-    snap_ext, subbox = snap, None
-    if args.subbox_margin is not None:
-        m = args.subbox_margin
-        mz = args.subbox_zmargin if args.subbox_zmargin is not None else m
-        ext = geom.extent
-        lo = [max(ext[0] - m, 0.0), max(ext[2] - m, 0.0),
-              max(geom.zrange[0] - mz, 0.0)]
-        hi = [min(ext[1] + m, b), min(ext[3] + m, b),
-              min(geom.zrange[1] + mz, b)]
-        snap_ext = snap.subbox(lo, hi)
-        subbox = {"margin_kpc": m, "zmargin_kpc": mz, "lo": lo, "hi": hi}
-        stats["snapshot"]["subbox"] = subbox
-        print(f"  subbox {lo} - {hi}: {snap_ext.ncells} cells")
-    stats["snapshot"]["ncells_external"] = snap_ext.ncells
-
-    # vortrace reference images for every geometry the external codes will
-    # integrate, computed now so the kD-tree can be freed before the
-    # memory-hungry mesh codes run.
-    ref_images = {}
-    for code in args.codes:
-        eff = external_geometry(code, geom, subbox, b)
-        if eff == geom:
-            ref_images[code] = res_vt.image
-        elif eff.to_dict() not in [g.to_dict() for g in ref_images.values()
-                                   if isinstance(g, Geometry)]:
-            print(f"  vortrace reference for {code} over z in {eff.zrange} ...")
-            ref_images[code], t_ref = common.timed(vortrace_reference, pc, eff)
-            print(f"    {t_ref:.1f} s")
-        stats.setdefault("reference_geometries", {})[code] = eff.to_dict()
-    del pc
-    gc.collect()
 
     # external codes ------------------------------------------------------
     for code in args.codes:
         mod = external_module(code)
         exe = mod.ensure_built()
         print(f"{code}: {exe}")
-        eff = external_geometry(code, geom, subbox, b)
-        kwargs = external_kwargs(code, snap_ext, subbox)
+        kwargs = external_kwargs(code, snap, domain)
         for nthreads in args.threads:
             workdir = args.workdir / f"{code}_{label}_t{nthreads}"
             print(f"  {code} with {nthreads} thread(s) ...")
-            res = run_external(code, snap_ext, geom, nthreads=nthreads,
+            res = run_external(code, snap, geom, nthreads=nthreads,
                                workdir=workdir, repeat=args.repeat, **kwargs)
             zr = res.settings.get("effective_zrange")
-            if zr is not None and tuple(zr) != tuple(eff.zrange):
+            if zr is not None and tuple(zr) != tuple(geom.zrange):
                 raise RuntimeError(f"{code} integrated z in {zr}, expected "
-                                   f"{eff.zrange}")
-            ref = ref_images[code]
+                                   f"{geom.zrange}")
+            ref = res_vt.image
             agreement = common.compare_images(ref, res.image)
             print(f"    total {res.timings['total_s']:.1f} s, "
                   f"max |rel err| {agreement['max_abs_rel_err']:.2e}")
             stats["external"].append({
                 "code": code, "nthreads": nthreads,
                 "timings": res.timings, "settings": res.settings,
-                "effective_geometry": eff.to_dict(),
                 "agreement": agreement,
             })
             key = f"{code} ({nthreads} thr)"

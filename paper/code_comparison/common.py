@@ -237,20 +237,24 @@ def _peak_rss_from_log(text):
 
 
 _TIME_L_WORKS = None
+# macOS BSD time reports the peak RSS with -l, GNU time with -v
+_TIME_FLAG = "-l" if platform.system() == "Darwin" else "-v"
 
 
 def _time_l_works():
-    """Whether ``/usr/bin/time -l`` (macOS) runs here; it fails inside
-    sandboxes that forbid the sysctl it needs.  Probed once."""
+    """Whether ``/usr/bin/time -l`` (macOS) or GNU ``time -v`` (Linux) runs
+    here; the former fails inside sandboxes that forbid the sysctl it needs.
+    Probed once."""
     global _TIME_L_WORKS  # pylint: disable=global-statement
     if _TIME_L_WORKS is None:
         _TIME_L_WORKS = False
-        if platform.system() == "Darwin" and os.path.exists("/usr/bin/time"):
+        if os.path.exists("/usr/bin/time"):
             try:
-                proc = subprocess.run(["/usr/bin/time", "-l", "true"],
+                proc = subprocess.run(["/usr/bin/time", _TIME_FLAG, "true"],
                                       capture_output=True, check=False)
                 _TIME_L_WORKS = (proc.returncode == 0 and
-                                 b"maximum resident set size" in proc.stderr)
+                                 b"maximum resident set size"
+                                 in proc.stderr.lower())
             except OSError:
                 pass
     return _TIME_L_WORKS
@@ -274,7 +278,7 @@ def run_logged(cmd, *, cwd, log_path, env=None, timeout=None,
     cmd = [str(c) for c in cmd]
     use_time = measure_rss and _time_l_works()
     if use_time:
-        cmd = ["/usr/bin/time", "-l"] + cmd
+        cmd = ["/usr/bin/time", _TIME_FLAG] + cmd
     run_logged.last_peak_rss_bytes = None
     t0 = time.perf_counter()
     with open(log_path, "w", encoding="utf-8") as log:
