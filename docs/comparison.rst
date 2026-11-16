@@ -43,19 +43,19 @@ Timings
      - Total [s]
      - Peak memory [GiB]
    * - ``vortrace``
-     - 8.4
+     - 8.3
      - 16.7
-     - 28.4
+     - 27.9
      - 3.2
    * - ``COLT``
-     - 339
+     - 338
      - 2.3
-     - 345
+     - 343
      - 57
    * - ``SKIRT``
-     - 110
+     - 111
      - 3.4
-     - 182
+     - 183
      - 16
 
 If a mesh exists and fits in memory, then tracing rays through it is faster. However, if a mesh is not needed for other purposes, then ``vortrace`` is between 6 and 12 times faster and uses between 5 and 18 times less memory than ``COLT`` or ``SKIRT``.
@@ -72,14 +72,14 @@ The relative difference for nearly all pixels between ``vortrace`` and each of `
 Reproducing
 -----------
 
-The harness lives in ``paper/code_comparison``. It builds COLT and SKIRT
-into ``data/external`` on first use.
+The scripts live in ``paper/code_comparison``. ``build.sh`` builds COLT and
+SKIRT into ``data/external``.
 
 On Ubuntu 22.04:
 
 .. code-block:: bash
 
-   sudo apt install build-essential g++-13 cmake curl time python3-venv \
+   sudo apt install build-essential g++-13 cmake curl unzip time python3-venv \
        python3-dev libhdf5-dev libyaml-cpp-dev libgsl-dev libgmp-dev \
        libmpfr-dev libboost-dev
 
@@ -97,14 +97,13 @@ ships CGAL 5.4, hence the separate download and ``g++-13``. For COLT and SKIRT9,
 
    pip install . h5py matplotlib
    cd paper/code_comparison
-   python colt_projection.py --build && python colt_projection.py --selftest
-   python skirt_projection.py --selftest    # builds SKIRT on first use
+   ./build.sh
+   python run_vortrace.py
+   python run_colt.py
+   python run_skirt.py
+   python compare.py
 
-   export OMP_NUM_THREADS=32
-   python make_code_comparison.py --galaxy small --threads 32 --repeat 3
-   python make_code_comparison.py --galaxy large --threads 32
-
-The small case needs nothing beyond the repository. The large case needs the
-dwarf-galaxy snapshot as ``data/snap_500.*.hdf5``, which is not shipped, and
-about 60 GiB of memory for COLT. Results are written to
-``stats_<galaxy>.json`` and ``timings.md`` next to the scripts.
+The scripts need the dwarf-galaxy snapshot as ``data/snap_500.*.hdf5``, which
+is not shipped, and about 60 GiB of memory for COLT. Each ``run_*.py`` writes
+``results_<code>.json``; ``compare.py`` writes ``timings.md`` and the figure
+``code_comparison.pdf``.
