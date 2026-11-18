@@ -1,0 +1,32 @@
+[
+  {
+    "code": "vortrace",
+    "threads": 1,
+    "build_s": 13.275712936068885,
+    "projection_s": 281.32518635701854,
+    "peak_gib": 4.0552215576171875
+  },
+  {
+    "code": "yt",
+    "threads": 1,
+    "build_s": 18.62478829396423,
+    "projection_s": 21.330513021093793,
+    "peak_gib": 0.9535102844238281,
+    "saved_index_s": 0.8821894380962476
+  },
+  {
+    "code": "vortrace",
+    "threads": 32,
+    "build_s": 13.15882126102224,
+    "projection_s": 19.20814907399472,
+    "peak_gib": 4.0558319091796875
+  },
+  {
+    "code": "yt",
+    "threads": 32,
+    "build_s": 18.657783313072287,
+    "projection_s": 14.355763145023957,
+    "peak_gib": 1.196075439453125,
+    "saved_index_s": 0.8837054250761867
+  }
+]
