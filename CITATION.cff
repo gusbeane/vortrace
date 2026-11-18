@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use vortrace, please cite it as below."
+title: "vortrace: Fast and Exact Projections through Voronoi Meshes"
+type: software
+authors:
+  - family-names: Beane
+    given-names: Angus
+    orcid: "https://orcid.org/0000-0002-8658-1453"
+  - family-names: Smith
+    given-names: Matthew C.
+    orcid: "https://orcid.org/0000-0002-9849-877X"
+repository-code: "https://github.com/gusbeane/vortrace"
+version: 0.1.4
+license: MIT
